@@ -1,13 +1,12 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
 # Directories
 .vs/
 bin/
 bin-int/
-
-# Files
-*.vcxproj
-*.vcxproj.user
-*.vcxproj.filters
-*.sln
 
 # Exclude
 !vendor/bin
