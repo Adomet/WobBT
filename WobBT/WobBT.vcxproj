@@ -144,22 +144,25 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\WobBT.cpp" />
-    <ClCompile Include="src\WobBTApp.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\Walnut\Walnut\Walnut.vcxproj">
       <Project>{C038E8D9-ACDA-12B0-9595-260481D69900}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Analyzer.h" />
-    <ClInclude Include="src\BackTester.h" />
     <ClInclude Include="src\Cerebro.h" />
+    <ClInclude Include="src\Debug.h" />
     <ClInclude Include="src\Indicator.h" />
     <ClInclude Include="src\OHLC.h" />
     <ClInclude Include="src\Strategy.h" />
+    <ClInclude Include="src\Strats.h" />
     <ClInclude Include="src\WobBTApp.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\Cerebro.cpp" />
+    <ClCompile Include="src\OHLC.cpp" />
+    <ClCompile Include="src\WobBT.cpp" />
+    <ClCompile Include="src\WobBTApp.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

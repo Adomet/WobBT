@@ -1,67 +1,142 @@
 #include <stdio.h>
 #include <iostream>
 #include <chrono>
-#include <ctime> 
+#include <ctime>
+#include <algorithm>
+#include <map>
+
 #include "WobBTApp.h"
-#include "OHLC.h"
-#include "ta_libc.h"
+#include "Cerebro.h"
 
-std::string getDataFilePath(std::string tradeCoin, std::string stableCoin, CANDLE_TYPE candleType, int dayCount)
+// strats to use at backtest
+#include "Strats.h"
+
+template <class T>
+float rundata(OHLC* data, std::vector<int> params)
 {
-    std::string backtestDate = "2021-01-19";
+    T mystrat(data, params);
+    Cerebro cerebro(&mystrat);
+    cerebro.setCommissons(0.001);
+    cerebro.setStartCash(1000);
+    // Get result and print result
+    float ret = cerebro.run();
 
-    // Get date
-    const time_t now = time(0);
-    tm tPtr;
-    localtime_s(&tPtr, &now);
-    size_t n = 2;
-    std::string yr_s = std::to_string(tPtr.tm_year + 1900);
-    std::string mon_s = std::to_string(tPtr.tm_mon + 1);
-    int p = n - std::min(n, mon_s.size());
-    mon_s = std::string(p, '0').append(mon_s);
-    std::string mday_s = std::to_string(tPtr.tm_mday + 1);
-    p = n - std::min(n, mday_s.size());
-    mday_s = std::string(p, '0').append(mday_s);
+    Debug::Log(paramStr(params) + ":::" + std::to_string(ret));
 
-    std::string path = "";
-    path += "./data/" + tradeCoin + "-" + stableCoin + "_" + candleString(candleType) + "_" + backtestDate + "=" + yr_s + "-" + mon_s + "-" + mday_s + ".csv";
+    return ret;
+}
 
-    return path;
+template <class T>
+std::vector<int>  optimizeStrat(OHLC* data, std::vector<int> oldparams)
+{
+    std::vector<int> newparams = OptRunData<T>(data, oldparams);
+    if (newparams == oldparams)
+        return oldparams;
+    else
+        return optimizeStrat<T>(data, newparams);
+}
+
+template <class T>
+std::vector<int>  OptRunData(OHLC* data, std::vector<int> oldparams)
+{
+    Debug::Log("Optimizing...");
+    Debug::Log(paramStr(oldparams));
+
+    std::vector<int> params = oldparams;
+
+    for (int i = 0; i < params.size(); i++)
+    {
+        if (params[i] == -1)
+            continue;
+
+        Timer timer("param search");
+        int step = std::max((params[i] / 100), 1);
+        int scan_range = 31;
+        int diff = step * scan_range;
+        int low = params[i] - diff - step;
+        int high = params[i] + diff + step;
+        low = std::max(low, 1);
+        high = std::max(high, 1);
+
+
+        float best_value = 0;
+        int   best_param = -1;
+        for (int p = low; p <= high; p += step)
+        {
+            params[i] = p;
+
+            float ret = rundata<T>(data, params);
+
+            if (best_value < ret)
+            {
+                best_value = ret;
+                best_param = p;
+            }
+        }
+
+        params[i] = best_param;
+        Debug::Log("Best:" + paramStr(params) + "::" + std::to_string(best_value));
+    }
+
+    return params;
+}
+
+std::string paramStr(std::vector<int>& params)
+{
+    std::string msg = "{";
+    for (size_t i = 0; i < params.size(); i++)
+    {
+        msg += std::to_string(params[i]) + ",";
+    }
+    msg += "}";
+    return msg;
+}
+
+void printHeader()
+{
+    Debug::Log("------------------------------------------------------------------------------------------");
+    Debug::Log("------------------------------------- WOB BACKTESTER -------------------------------------");
+    Debug::Log("------------------------------------------------------------------------------------------");
+    Debug::Log("");
+}
+
+TA_RetCode initTaLib()
+{
+    auto retCode = TA_Initialize();
+    if (retCode != TA_SUCCESS) {
+        std::cout << "CANNOT INITIALIZE TA-LIB!" << std::endl;
+    }
+
+    return retCode;
 }
 
 
 int runWobBT(int argc, char** argv)
 {
-    std::string tradeCoin = "AVAX";
-    std::string stableCoin = "USDT";
-    CANDLE_TYPE type = CANDLE_TYPE::m15;
-    int dayCount = 720;
-    std::string path = getDataFilePath(tradeCoin, stableCoin, type, 720);
-    OHLC data = CSV2OHLC(path, type);
+    printHeader();
 
-    //Create a WobBTApp with some arguments when needed
+    initTaLib();
 
-    // App will take a backtester at the end of operations return a backtester with data
-    // After all opereations done press a ImGui button to save backtester params to a log file (log.txt) i donno
+    std::string initDate  = "2020-10-01";
+    std::string stdDate   = "2021-01-19";
+    std::string startDate = "2022-09-01";
 
+    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, stdDate);
 
-    auto retCode = TA_Initialize();
-    if (retCode != TA_SUCCESS) {
-        std::cout << "CANNOT INITIALIZE TA-LIB!" << std::endl;
-        return -1;
-    }
+    Timer timer("All");
 
+    std::vector<float> results;
 
-    if (false)
-    {
-        WobBTApp app(0, nullptr);
-        app.Run();
-    }
+    //results.push_back(rundata<MyStratV1>(&data, optimizeStrat<MyStratV1>(&data, {14,14,14,14,14,14,14,14,14,14,})));
+    results.push_back(rundata<MyStratV1>(&data, {14,14,14,14,14,14,14,14,14,14,}));
 
-    return TA_Shutdown();
+    auto best = std::max_element(results.begin(),results.end());
+    Debug::Log("Best result: " + std::to_string(*best));
+
+    // By By
+    TA_Shutdown();
+    return 0;
 }
-
-
 
 int main(int argc, char** argv)
 {
@@ -105,3 +180,9 @@ int main(int argc, char** argv)
 // Advanced Cutomizeablty
 
 //====================================================================================================================================================================================
+
+// Create and add data to cerebro and Run
+// Add data,Strategy,startCash,Analyzers,Commsions to cerebro
+// Create a WobBTApp with some arguments when needed
+// App will take a backtester at the end of operations return a backtester with data
+// After all opereations done press a ImGui button to save backtester params to a log file (log.txt) i donno

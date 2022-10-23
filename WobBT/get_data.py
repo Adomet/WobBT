@@ -1,6 +1,7 @@
 from binance.client import Client
 from config import BINANCE,COIN_TARGET, COIN_REFER
 import csv,datetime,os
+import sys
 
 def get_Date_Data(fromdate,todate,timeframe,target,reGet):
     client = Client(BINANCE.get("key"),BINANCE.get("secret"))
@@ -57,14 +58,30 @@ def StartDateInit(tf):
     todate = datetime.date.today() + datetime.timedelta(days=1)
     return initDataDate(fromdate,todate,Client.KLINE_INTERVAL_15MINUTE,COIN_TARGET,tf)
 
+def DateInit(date):
+    fromdate = datetime.datetime.strptime(date, '%Y-%m-%d')
+    fromdate = fromdate.date()
+    todate = datetime.date.today() + datetime.timedelta(days=1)
+    return initDataDate(fromdate,todate,Client.KLINE_INTERVAL_15MINUTE,COIN_TARGET,True)
+
+
 val_list =list()
 
 if __name__ == '__main__':
-    reget = False
+    reget = True
     Delay = 0
     Dayz = 132
 
+
+    if(len(sys.argv) > 1):
+        print("BackTest Date: " + str(sys.argv[1]))
+        date = str(sys.argv[1])
+        DateInit(date)
+    else:
+        StdDateInit(reget) 
+
+
     #initData(Dayz,Delay,Client.KLINE_INTERVAL_15MINUTE,COIN_TARGET,reget)
     #StartDateInit(True) #Standart Date to today test
-    StdDateInit(reget)  #Standart Date to today test
+    #Standart Date to today test
     print("Finised Getting Data...")
