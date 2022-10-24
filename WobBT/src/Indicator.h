@@ -267,7 +267,7 @@ public:
 	void init()
 	{
 		auto     closeLen = m_ohlc->close.size();
-		init_period = 4;
+		init_period = 10;
 
 		for (size_t i =0 ; i < init_period; i++)
 		{
@@ -306,7 +306,7 @@ public:
 class CrossOver : public Indicator
 {
 public:
-	CrossOver(OHLC* ohlc, std::vector<double> line1, std::vector<double> line2) :m_line1(line1), m_line2(line2), Indicator(ohlc) { init(); };
+	CrossOver(OHLC* ohlc, std::vector<double>* line1, std::vector<double>* line2) :m_line1(*line1), m_line2(*line2), Indicator(ohlc) { init(); };
 	~CrossOver() {};
 	void init()
 	{
@@ -330,70 +330,85 @@ public:
 		}
 
 	}
-	std::vector<double> m_line1;
-	std::vector<double> m_line2;
+	std::vector<double>& m_line1;
+	std::vector<double>& m_line2;
 };
 
 class SuperTrend : public Indicator
 {
 public:
-	SuperTrend(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = std::max(min_period, period); init(); };
+	SuperTrend(OHLC* ohlc, int period,double multi) :Indicator(ohlc) { m_period = std::max(min_period, period); m_multi = std::max(0.001, multi); init(); };
 	~SuperTrend() {};
 	void init()
 	{
-		std::vector<double> atr_line = ATR(m_ohlc,m_period).line;
-		auto    closeLen = m_ohlc->close.size();
-		double multi = 271.0/100.0;
+		//Debug::Log("m_period" + std::to_string(m_period) + " m_multi" + std::to_string(m_multi));
 
-		for (size_t i = 0; i < closeLen; i++)
+		Indicator& atr = ATR(m_ohlc, m_period);
+		std::vector<double>& atr_line = atr.line;
+		size_t closeLen = m_ohlc->close.size();
+		std::vector<float>& close    = m_ohlc->close;
+		std::vector<float>& high     = m_ohlc->high;
+		std::vector<float>& low      = m_ohlc->low;
+
+
+		init_period = 1;
+		line.push_back(0);
+		double upper_band = (high[0] + low[0]) / 2 + (m_multi * atr_line[0]);
+		double lower_band = (high[0] + low[0]) / 2 - (m_multi * atr_line[0]);
+		double prev_final_upper_band = upper_band;
+		double prev_final_lower_band = upper_band;
+
+
+		for (size_t i = 0; i < atr.init_period; i++)
 		{
-			double res = 0;
-			auto close = m_ohlc->close[i];
-			auto high  = m_ohlc->high[i];
-			auto low   = m_ohlc->low[i];
-			double upper_band = (high + low) / 2 + (multi * atr_line[i]);
-			double lower_band = (high + low) / 2 - (multi * atr_line[i]);
-			double final_upper_band = 0;
-			double final_lower_band = 0;
-
-			if ((upper_band < final_upper_band) && (close < final_lower_band))
-			{
-				final_upper_band = final_lower_band;
-			}
-
-			else
-			{
-				final_upper_band = lower_band;
-			}
-
-
-			if ((lower_band > final_lower_band) && (close < final_lower_band))
-			{
-				final_lower_band = lower_band;
-			}
-
-			else
-			{
-				final_lower_band = final_lower_band;
-			}
-
-			double strnd = 0;
-
-			if ((close <= final_upper_band))
-			{
-				strnd = final_upper_band;
-			}
-			else
-			{
-				strnd = final_lower_band;
-			}
-
-
-			line.push_back(res);
+			line.push_back(close[i]);
 		}
-	
+		for (size_t i = atr.init_period; i < closeLen; i++)
+		{
+			double super_trend = 0;
+			double upper_band = (high[i] + low[i]) / 2 + (m_multi * atr_line[i]);
+			double lower_band = (high[i] + low[i]) / 2 - (m_multi * atr_line[i]);
+			double final_upper_band = upper_band;
+			double final_lower_band = lower_band;
+
+
+			if ((upper_band < prev_final_upper_band) || (close[i-1] > prev_final_upper_band))
+			{
+				final_upper_band=upper_band;
+			}
+			else
+			{
+				final_upper_band=prev_final_upper_band;
+			}
+			
+			if ((lower_band > prev_final_lower_band) || (close[i-1] < prev_final_lower_band))
+			{
+				final_lower_band=lower_band;
+			}
+			else
+			{
+				final_lower_band=prev_final_lower_band;
+			}
+			
+			if ((close[i] < final_upper_band))
+			{
+				super_trend = final_upper_band;
+			}
+			else
+			{
+				super_trend = final_lower_band;
+			}
+
+
+			line.push_back(super_trend);
+
+			prev_final_upper_band = final_upper_band;
+			prev_final_lower_band = final_lower_band;
+
+		}
 	}
 public:
 	int min_period = 2;
 	int m_period;
+	double m_multi;
 };

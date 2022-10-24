@@ -121,14 +121,14 @@ int runWobBT(int argc, char** argv)
     std::string stdDate   = "2021-01-19";
     std::string startDate = "2022-09-01";
 
-    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, stdDate);
+    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, startDate);
 
     Timer timer("All");
 
     std::vector<float> results;
 
-    //results.push_back(rundata<MyStratV1>(&data, optimizeStrat<MyStratV1>(&data, {14,14,14,14,14,14,14,14,14,14,})));
-    results.push_back(rundata<MyStratV1>(&data, {14,14,14,14,14,14,14,14,14,14,}));
+    results.push_back(rundata<MyStratV1>(&data, optimizeStrat<MyStratV1>(&data, { 14,14,14,14,28,14,14,2,271 })));
+    //results.push_back(rundata<MyStratV1>(&data, {14,14,14,14,28,14,14,2,271}));
 
     auto best = std::max_element(results.begin(),results.end());
     Debug::Log("Best result: " + std::to_string(*best));

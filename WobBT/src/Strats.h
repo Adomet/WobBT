@@ -23,14 +23,14 @@ public:
         m_Inds.push_back(new RSI(m_Data,        m_params[4]));
         m_Inds.push_back(new ATR(m_Data,        m_params[5]));
         m_Inds.push_back(new ADX(m_Data,        m_params[6]));
-        m_Inds.push_back(new SuperTrend(m_Data, m_params[7]));
         m_Inds.push_back(new TD9(m_Data));
 
         auto ema  = m_Inds[1];
         auto dema = m_Inds[2];
-        m_Inds.push_back(new CrossOver(m_Data, dema->line, ema->line));
+        m_Inds.push_back(new CrossOver(m_Data, &dema->line, &ema->line));
 
 
+        m_Inds.push_back(new SuperTrend(m_Data, m_params[7], m_params[8]/100.0));
         for each (auto var in m_Inds)
         {
             auto tmp = var->init_period;
@@ -62,12 +62,12 @@ public:
         double rsi   = m_Inds[4]->line[candleIndex];
         double atr   = m_Inds[5]->line[candleIndex];
         double adx   = m_Inds[6]->line[candleIndex];
-        double strd  = m_Inds[7]->line[candleIndex];
-        double td9   = m_Inds[8]->line[candleIndex];
-        double crss  = m_Inds[9]->line[candleIndex];
+        double td9   = m_Inds[7]->line[candleIndex];
+        double crss  = m_Inds[8]->line[candleIndex];
+        double strd  = m_Inds[9]->line[candleIndex];
 
         //Print Last Candle
-        if (candleIndex == m_Data->close.size()-1)
+        if ((false ||candleIndex == m_Data->close.size()-1) && false)
         {
             Debug::Log("------------------------------------------------------------------------------------------");
             Debug::Log("candleIndex:" + std::to_string(candleIndex)+" => open:" + std::to_string(open) + " high:" + std::to_string(high) + " low:" + std::to_string(low) + " close:" + std::to_string(close) + " volume:" + std::to_string(volume));
