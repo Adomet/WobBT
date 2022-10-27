@@ -33,7 +33,7 @@ public:
 		int     outBeg = 0;
 		int     outNbElement = 0;
 
-		auto retCode = TA_S_MA(0, closeLen - 1, &m_ohlc->close[0], m_period, TA_MAType_SMA, &outBeg, &outNbElement, &out[0]);
+		auto retCode = TA_MA(0, closeLen - 1, &m_ohlc->close[0], m_period, TA_MAType_SMA, &outBeg, &outNbElement, &out[0]);
 
 		for (int i = 0; i < outBeg; i++)
 		{
@@ -67,7 +67,7 @@ public:
 		int     outBeg = 0;
 		int     outNbElement = 0;
 
-		auto retCode = TA_S_MA(0, closeLen - 1, &m_ohlc->close[0], m_period, TA_MAType_EMA, &outBeg, &outNbElement, &out[0]);
+		auto retCode = TA_MA(0, closeLen - 1, &m_ohlc->close[0], m_period, TA_MAType_EMA, &outBeg, &outNbElement, &out[0]);
 
 		for (int i = 0; i < outBeg; i++)
 		{
@@ -101,7 +101,7 @@ public:
 		int     outBeg = 0;
 		int     outNbElement = 0;
 
-		auto retCode = TA_S_MA(0, closeLen - 1, &m_ohlc->close[0], m_period, TA_MAType_DEMA, &outBeg, &outNbElement, &out[0]);
+		auto retCode = TA_MA(0, closeLen - 1, &m_ohlc->close[0], m_period, TA_MAType_DEMA, &outBeg, &outNbElement, &out[0]);
 
 		for (int i = 0; i < outBeg; i++)
 		{
@@ -135,7 +135,7 @@ public:
 		int     outBeg = 0;
 		int     outNbElement = 0;
 
-		auto retCode = TA_S_MA(0, closeLen - 1, &m_ohlc->close[0], m_period, TA_MAType_TEMA, &outBeg, &outNbElement, &out[0]);
+		auto retCode = TA_MA(0, closeLen - 1, &m_ohlc->close[0], m_period, TA_MAType_TEMA, &outBeg, &outNbElement, &out[0]);
 
 		for (int i = 0; i < outBeg; i++)
 		{
@@ -159,7 +159,7 @@ public:
 class RSI : public Indicator
 {
 public:
-	RSI(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = std::max(min_period,period); init(); };
+	RSI(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = period; init(); };
 	~RSI() {};
 	void init()
 	{
@@ -168,11 +168,20 @@ public:
 		int     outBeg = 0;
 		int     outNbElement = 0;
 
-		auto retCode = TA_S_RSI(0, closeLen - 1, &m_ohlc->close[0], m_period, &outBeg, &outNbElement, &out[0]);
+		auto retCode = TA_RSI(0, closeLen - 1, &m_ohlc->close[0], m_period, &outBeg, &outNbElement, &out[0]);
+
+		if (m_period < min_period)
+		{
+			for (size_t i = 0; i < closeLen; i++)
+			{
+				line.push_back(0);
+			}
+			return;
+		}
 
 		for (int i = 0; i < outBeg; i++)
 		{
-			line.push_back(0);
+			line.push_back(50);
 		}
 
 		for (int i = 0; i < outNbElement; i++)
@@ -180,6 +189,9 @@ public:
 			line.push_back(out[i]);
 		}
 		//printf("Candle %d = %f\n", 1 + outBeg + i, out[i]);
+
+
+
 		init_period = outBeg;
 
 		delete[closeLen] out;
@@ -203,7 +215,7 @@ public:
 		int     outBeg = 0;
 		int     outNbElement = 0;
 
-		auto retCode = TA_S_ADX(0, closeLen - 1, &m_ohlc->high[0], &m_ohlc->low[0], &m_ohlc->close[0], m_period, &outBeg, &outNbElement, &out[0]);
+		auto retCode = TA_ADX(0, closeLen - 1, &m_ohlc->high[0], &m_ohlc->low[0], &m_ohlc->close[0], m_period, &outBeg, &outNbElement, &out[0]);
 
 		for (int i = 0; i < outBeg; i++)
 		{
@@ -237,7 +249,7 @@ public:
 		int     outBeg = 0;
 		int     outNbElement = 0;
 
-		auto retCode = TA_S_ATR(0, closeLen - 1, &m_ohlc->high[0], &m_ohlc->low[0], &m_ohlc->close[0], m_period, &outBeg, &outNbElement, &out[0]);
+		auto retCode = TA_ATR(0, closeLen - 1, &m_ohlc->high[0], &m_ohlc->low[0], &m_ohlc->close[0], m_period, &outBeg, &outNbElement, &out[0]);
 
 		for (int i = 0; i < outBeg; i++)
 		{
@@ -277,7 +289,7 @@ public:
 		for (size_t i = init_period; i < closeLen; i++)
 		{
 			int res = 0;
-			float prvcandleclose = 0;
+			double prvcandleclose = 0;
 			if (m_ohlc->high[i - 4] < m_ohlc->close[i])
 			{
 				prvcandleclose = m_ohlc->close[i];
@@ -337,40 +349,49 @@ public:
 class SuperTrend : public Indicator
 {
 public:
-	SuperTrend(OHLC* ohlc, int period,double multi) :Indicator(ohlc) { m_period = std::max(min_period, period); m_multi = std::max(0.001, multi); init(); };
+	SuperTrend(OHLC* ohlc, int period, double multi) :Indicator(ohlc) { m_period = period; m_multi = std::max(0.001, multi); init(); };
 	~SuperTrend() {};
 	void init()
 	{
-		//Debug::Log("m_period" + std::to_string(m_period) + " m_multi" + std::to_string(m_multi));
 
-		Indicator& atr = ATR(m_ohlc, m_period);
+		size_t closeLen               = m_ohlc->close.size();
+		Indicator& atr                = ATR(m_ohlc, m_period);
 		std::vector<double>& atr_line = atr.line;
-		size_t closeLen = m_ohlc->close.size();
-		std::vector<float>& close    = m_ohlc->close;
-		std::vector<float>& high     = m_ohlc->high;
-		std::vector<float>& low      = m_ohlc->low;
+		std::vector<double>& close    = m_ohlc->close;
+		std::vector<double>& high     = m_ohlc->high;
+		std::vector<double>& low      = m_ohlc->low;
 
 
-		init_period = 1;
+		init_period = atr.init_period;
 		line.push_back(0);
+
 		double upper_band = (high[0] + low[0]) / 2 + (m_multi * atr_line[0]);
 		double lower_band = (high[0] + low[0]) / 2 - (m_multi * atr_line[0]);
+
 		double prev_final_upper_band = upper_band;
 		double prev_final_lower_band = upper_band;
 
-
-		for (size_t i = 0; i < atr.init_period; i++)
+		if (m_period < min_period)
 		{
-			line.push_back(close[i]);
+			for (size_t i = 0; i < closeLen; i++)
+			{
+				line.push_back(0);
+			}
+			return;
 		}
-		for (size_t i = atr.init_period; i < closeLen; i++)
+
+		for (size_t i = 0; i < init_period; i++)
 		{
-			double super_trend = 0;
-			double upper_band = (high[i] + low[i]) / 2 + (m_multi * atr_line[i]);
-			double lower_band = (high[i] + low[i]) / 2 - (m_multi * atr_line[i]);
+			line.push_back(prev_final_upper_band);
+		}
+		for (size_t i = init_period; i < closeLen; i++)
+		{
+			
+			double upper_band = ((high[i] + low[i]) / 2) + (m_multi * atr_line[i]);
+			double lower_band = ((high[i] + low[i]) / 2) - (m_multi * atr_line[i]);
+
 			double final_upper_band = upper_band;
 			double final_lower_band = lower_band;
-
 
 			if ((upper_band < prev_final_upper_band) || (close[i-1] > prev_final_upper_band))
 			{
@@ -389,16 +410,31 @@ public:
 			{
 				final_lower_band=prev_final_lower_band;
 			}
-			
-			if ((close[i] < final_upper_band))
+
+			double super_trend = final_upper_band;
+			if (line[i] == prev_final_upper_band)
 			{
-				super_trend = final_upper_band;
-			}
-			else
-			{
-				super_trend = final_lower_band;
+				if (close[i] <= final_upper_band)
+				{
+					super_trend = final_upper_band;
+				}
+				else
+				{
+					super_trend = final_lower_band;
+				}
 			}
 
+			if (line[i] == prev_final_lower_band)
+			{
+				if (close[i] >= final_lower_band)
+				{
+					super_trend = final_lower_band;
+				}
+				else
+				{
+					super_trend = final_upper_band;
+				}
+			}
 
 			line.push_back(super_trend);
 

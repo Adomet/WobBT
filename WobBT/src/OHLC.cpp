@@ -1,6 +1,6 @@
 #include "OHLC.h"
 
-OHLC::OHLC(std::vector<float> open, std::vector<float>high, std::vector<float> low, std::vector<float> close, std::vector<float> volume, CANDLE_TYPE candleType)
+OHLC::OHLC(std::vector<double> open, std::vector<double>high, std::vector<double> low, std::vector<double> close, std::vector<double> volume, CANDLE_TYPE candleType)
 {
     OHLC::open = open;
     OHLC::high = high;
@@ -14,15 +14,15 @@ OHLC::OHLC(std::vector<float> open, std::vector<float>high, std::vector<float> l
 OHLC::~OHLC()
 {}
 
-OHLC  OHLC::CSV2OHLC(std::string filepath, CANDLE_TYPE candleType, std::string backtestDate)
+OHLC  OHLC::CSV2OHLC(std::string filepath, CANDLE_TYPE candleType, std::string backtestDate, bool reget)
 {
 
     // Add date
-    std::vector<float> open;
-    std::vector<float> high;
-    std::vector<float> low;
-    std::vector<float> close;
-    std::vector<float> volume;
+    std::vector<double> open;
+    std::vector<double> high;
+    std::vector<double> low;
+    std::vector<double> close;
+    std::vector<double> volume;
 
     //read filepath and construct data and return
 
@@ -68,16 +68,18 @@ OHLC  OHLC::CSV2OHLC(std::string filepath, CANDLE_TYPE candleType, std::string b
     printf("\n");
     printf(msg2.c_str());
     printf("\n");
+    printf("------------------------------------------------------------------------------------------");
+    printf("\n");
 
-    if (candleCount <= 0)
+    if (candleCount <= 0 || reget)
     {
-        printf("No data Found!!!");
+        printf("Get Data !!!");
         printf("\n");
 
         std::string pyCall = "py get_data.py " + backtestDate;
         int retCode = system(pyCall.c_str());
 
-        return CSV2OHLC(filepath, candleType,backtestDate);
+        return CSV2OHLC(filepath, candleType,backtestDate,false);
     }
 
     return OHLC(open, high, low, close, volume, candleType);
@@ -105,10 +107,10 @@ std::string OHLC::getDataFilePath(std::string tradeCoin, std::string stableCoin,
     return path;
 }
 
-OHLC OHLC::getData(std::string tradeCoin, std::string stableCoin, OHLC::CANDLE_TYPE type, std::string backtestDate)
+OHLC OHLC::getData(std::string tradeCoin, std::string stableCoin, OHLC::CANDLE_TYPE type, std::string backtestDate,bool reget)
 {
     // Get Data YYYY-MM-DD
     std::string path = OHLC::getDataFilePath(tradeCoin, stableCoin, type, backtestDate);
-    OHLC data = OHLC::CSV2OHLC(path, type, backtestDate);
+    OHLC data = OHLC::CSV2OHLC(path, type, backtestDate, reget);
     return data;
 }

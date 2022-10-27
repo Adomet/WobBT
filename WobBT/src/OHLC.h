@@ -42,19 +42,19 @@ public:
         }
     }
 
-    OHLC(std::vector<float> open, std::vector<float> high, std::vector<float> low, std::vector<float> close, std::vector<float> volume, CANDLE_TYPE candleType);
+    OHLC(std::vector<double> open, std::vector<double> high, std::vector<double> low, std::vector<double> close, std::vector<double> volume, CANDLE_TYPE candleType);
     ~OHLC();
 
-    static OHLC CSV2OHLC(std::string filepath, CANDLE_TYPE candleType, std::string backtestDate);
+    static OHLC CSV2OHLC(std::string filepath, CANDLE_TYPE candleType, std::string backtestDate, bool reget);
     static std::string OHLC::getDataFilePath(std::string tradeCoin, std::string stableCoin, OHLC::CANDLE_TYPE candleType, std::string backtestDate);
-    static OHLC OHLC::getData(std::string tradeCoin, std::string stableCoin, OHLC::CANDLE_TYPE type, std::string backtestDate);
+    static OHLC OHLC::getData(std::string tradeCoin, std::string stableCoin, OHLC::CANDLE_TYPE type, std::string backtestDate,bool reget);
 
 public:
-    std::vector<float> open;
-    std::vector<float> high;
-    std::vector<float> low;
-    std::vector<float> close;
-    std::vector<float> volume;
+    std::vector<double> open;
+    std::vector<double> high;
+    std::vector<double> low;
+    std::vector<double> close;
+    std::vector<double> volume;
     CANDLE_TYPE m_CandleType;
 };
 
