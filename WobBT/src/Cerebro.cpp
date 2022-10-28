@@ -6,6 +6,7 @@ double Cerebro::run()
 	double ret = 0;
 	m_Strategy->init();
 	ret = m_Strategy->run();
+
 	//Create a Analyzed class to return 
 	return ret;
 }

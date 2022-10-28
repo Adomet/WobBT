@@ -18,24 +18,8 @@ public:
     double ret = 0;
 };
 
-
-
-
-void printAnalyzerResuts(Strategy& mystrat)
-{
-    Debug::Log("------------------------------------------------------------------------------------------");
-    Debug::Log("------------------------------------ RESULTS ---------------------------------------------");
-    for each (auto var in mystrat.m_Analyzers)
-    {
-        var->printResult();
-        delete var;
-    }
-    Debug::Log("------------------------------------------------------------------------------------------");    
-}
-
-
 template <class T>
-double rundata(OHLC* data, std::vector<int> params)
+double rundata(std::vector<int> params,OHLC* data,bool showAnalysis,bool showPlot)
 {
     T mystrat(data, params);
     Cerebro cerebro(&mystrat);
@@ -59,16 +43,23 @@ double rundata(OHLC* data, std::vector<int> params)
     // Get result and print result
     cerebro.run();
 
-    double res = sqrt(ret->m_Result) * sqn->m_Result * sqn->m_Result * sqn->m_Result * winrate->m_Result * winrate->m_Result * mystrat.m_winTradeCount / maxDD->m_Result;
+    //double res = sqrt(ret->m_Result) * sqn->m_Result * winrate->m_Result * mystrat.m_winTradeCount / maxDD->m_Result;
+    double res = sqrt(ret->m_Result) * sqn->m_Result * winrate->m_Result * mystrat.m_winTradeCount / maxDD->m_Result;
     Debug::Log(paramStr(params) + "::" + std::to_string(res) + " ::: Result");
 
-    printAnalyzerResuts(mystrat);
+    if (showAnalysis)
+        mystrat.printResults();
+
+    if (showPlot)
+        mystrat.Plot();
+
+    mystrat.deleteElements();
     return res;
 }
 
 static std::mutex s_runData_mutex;
 template <class T>
-void rundataAsync(OHLC* data, std::vector<int> params,int i, std::vector<ReturnPayload>* result_Payloads)
+void rundataAsync(std::vector<int> params,OHLC* data,int i, std::vector<ReturnPayload>* result_Payloads)
 {
     T mystrat(data, params);
     Cerebro cerebro(&mystrat);
@@ -92,7 +83,7 @@ void rundataAsync(OHLC* data, std::vector<int> params,int i, std::vector<ReturnP
     // Get result and print result
     cerebro.run();
 
-    double res = sqrt(ret->m_Result) * sqn->m_Result * sqn->m_Result * sqn->m_Result * winrate->m_Result * winrate->m_Result * mystrat.m_winTradeCount / maxDD->m_Result;
+    double res = sqrt(ret->m_Result) * sqn->m_Result * winrate->m_Result * mystrat.m_winTradeCount / maxDD->m_Result;
 
     ReturnPayload payload;
     payload.param = params[i];
@@ -102,10 +93,11 @@ void rundataAsync(OHLC* data, std::vector<int> params,int i, std::vector<ReturnP
     result_Payloads->push_back(payload);
     //Debug::Log(paramStr(params) + ":::" + std::to_string(ret));
 
+    mystrat.deleteElements();
 }
 
 template <class T>
-std::vector<int>  optimizeStrat(OHLC* data, std::vector<int> oldparams, int scan_range = 4)
+std::vector<int>  optimizeStrat(std::vector<int> oldparams, OHLC* data, int scan_range = 4)
 {
     std::vector<int> newparams = OptRunData<T>(data, oldparams, scan_range);
     if (newparams == oldparams)
@@ -113,11 +105,11 @@ std::vector<int>  optimizeStrat(OHLC* data, std::vector<int> oldparams, int scan
         if (scan_range > 100)
             return newparams;
         else
-            return optimizeStrat<T>(data, newparams, scan_range * 2);
+            return optimizeStrat<T>(newparams,data,scan_range * 2);
     }
     else
     {
-        return optimizeStrat<T>(data, newparams, scan_range);
+        return optimizeStrat<T>(newparams, data, scan_range);
     }
 }
 
@@ -149,7 +141,7 @@ std::vector<int>  OptRunData(OHLC* data, std::vector<int> oldparams, int scan_ra
         for (int p = low; p <= high; p += step)
         {
             params[i] = std::max(p, 1);
-            m_futures.push_back(std::async(std::launch::async, rundataAsync<T>, data, params, i, &result_Payloads));
+            m_futures.push_back(std::async(std::launch::async, rundataAsync<T>, params, data, i, &result_Payloads));
         }
 
         for (size_t f = 0; f < m_futures.size(); f++)
@@ -219,7 +211,7 @@ int runWobBT(int argc, char** argv)
 
     initTaLib();
 
-    std::string initDate  = "2020-10-01";
+    std::string initDate  = "2020-09-23";
     std::string stdDate   = "2021-01-17";
     std::string startDate = "2022-09-01";
 
@@ -229,16 +221,19 @@ int runWobBT(int argc, char** argv)
 
     std::vector<double> results;
 
-    results.push_back(rundata<MyStratV1>(& data, optimizeStrat<MyStratV1>(&data, { 2,271,2,910,160,56,259,254,1617,19,525,348,101,175,340,1161,572,280,160,-1,-1 })));
-    //results.push_back(rundata<MyStratV1>(&data, { 2,271,2,910,160,56,259,254,1617,19,525,348,101,175,340,1161,572,280,160,-1,-1, }));
+    results.push_back(rundata<MyStratV1>(optimizeStrat<MyStratV1>({ 2,271,2,910,160,56,259,254,1617,19,525,348,101,175,340,1161,572,280,160,-1,-1 },&data),&data, true, false));
+    //results.push_back(rundata<MyStratV1>({ 2,271,2,910,160,56,259,254,1617,19,525,348,101,175,340,1161,572,280,160,-1,-1, },&data,true,false));
+    //results.push_back(rundata<MyStratV1>({2,273,2,876,159,56,347,248,1617,19,525,348,101,180,340,1156,567,280,160,-1,-1,},&data,true,false));
 
-    auto best = std::max_element(results.begin(),results.end());
+    auto best = std::max_element(results.begin(),results.end()); 
     Debug::Log("Best result: " + std::to_string(*best));
 
     // By By
     TA_Shutdown();
     return 0;
 }
+
+
 
 int main(int argc, char** argv)
 {
@@ -250,8 +245,7 @@ int main(int argc, char** argv)
 // Libraries to use
 // GUI => Imgui
 // TA  => ta-lib
-// Plotting => Implot maybe pbplots
-// GPU => CUDA / Compute shader donno whitch is faster ?
+// Plotting => Matplotlib
 // Template    => Walnut
 // Render API  => Vulkan
 // BacktestLib => my lib
@@ -259,22 +253,13 @@ int main(int argc, char** argv)
 // TODO : 
 // X Fist backtest (no graph) single Thread just return stats
 // X Add someindicators
-// ==> Add some analyzers
-// backtest with a graph some how
-// Multi thread backtest
-// GPU backtest
-// class todo indicators,  analyzers, ohlc candles, cerebro lines,
+// X Add some analyzers
+// X backtest with a graph some how
+// X Multi thread backtest
+// (No need) GPU backtest
 // Interactive backtesting!!!
-// make best backtest library possiable so peaple dont fucking use 384923 of them
 
 // wanted result: Backtest Library that looking good with advanced strat cutomization and fastest backtester lets goooo
-
-// ===================== Fist backtest (no graph) single Thread just return stats ====================================
-// x read csv and get data  
-// ==> write your strat based on OHLC update data
-// Create Strat Object and add to backtester (need a good name)
-// make Init start update end funciton of Strat
-// read analyzers from strat
 
 
 // ===================== Ideas ==================================== 
@@ -284,13 +269,6 @@ int main(int argc, char** argv)
 
 //====================================================================================================================================================================================
 
-// Create and add data to cerebro and Run
-// Add data,Strategy,startCash,Analyzers,Commsions to cerebro
 // Create a WobBTApp with some arguments when needed
 // App will take a backtester at the end of operations return a backtester with data
 // After all opereations done press a ImGui button to save backtester params to a log file (log.txt) i donno
-
-// hangisi daha büyük kontrol edersen sýrasý bozulduðu için hangisi önce bitirirse ondan devam ediyor
-
-// {4,349,481,1,1,29,346,1,3061,20,516,352,97,177,340,1249,571,279,154,-1,-1,}::543402.516151
-// 

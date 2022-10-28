@@ -8,6 +8,9 @@
 #include "Debug.h"
 #include "Indicator.h"
 #include "Analyzer.h"
+#include "matplotlib/matplotlibcpp.h"
+namespace plt = matplotlibcpp;
+
 // Generic Strategy Class and virtual functions
 // Takes a param array array of intager as params
 
@@ -27,13 +30,107 @@ public:
 		return m_Cash + (m_buysize * close);
 	}
 
-	double end(double close)
-	{ 
+	void Plot()
+	{
+		// Prepare data
+		// int n = 500;
+		// std::vector<double> x(n), y(n), z(n), w(n, 2);
+		// for (int i = 0; i < n; ++i) {
+		// 	x.at(i) = i;
+		// 	y.at(i) = sin(2 * 3.14 * i / 360.0);
+		// 	z.at(i) = 100.0 / i;
+		// }
+		// 
+		// // Set the "super title"
+		// plt::suptitle("My plot");
+		// plt::subplot(1, 2, 1);
+		// plt::plot(x, y, "r-");
+		// plt::subplot(1, 2, 2);
+		// plt::plot(x, z, "k-");
+		// // Add some text to the plot
+		// plt::text(100, 90, "Hello!");
+		// 
+		// 
+		// // Show plots
+		// plt::show();
 
+		std::map<std::string, double> m{ {"left", 0.03}, {"right", 0.97},{"bottom", 0.03} ,{"top", 0.97}};
+
+		plt::subplots_adjust(m);
+		
+		int c = 1;
+		
+
+		for each (auto var in m_Inds)
+		{
+			if (!var->isSubplot)
+			{
+				plt::plot(var->line);
+
+				auto len = var->line.size();
+				plt::text(0, (int)var->line[0], var->m_name);
+
+				auto tmp = var->line[len - 1];
+				plt::text((int)len, (int)tmp, std::to_string(tmp));
+			}
+		}
+
+		size_t size = m_Inds.size() - c-1;
+		for each (auto var in m_Inds)
+		{
+			if (var->isSubplot)
+			{
+				plt::subplot(size, 1, c++);
+				plt::plot(var->line);
+		
+		
+				auto len = var->line.size();
+				plt::text(0, (int)var->line[0], var->m_name);
+		
+				auto tmp = var->line[len - 1];
+				plt::text((int)len, 0, std::to_string(tmp));
+			}
+		}
+
+		plt::show();
+	}
+
+
+	void printResults()
+	{
+		Debug::Log("------------------------------------------------------------------------------------------");
+		Debug::Log("------------------------------------ RESULTS ---------------------------------------------");
+		for each (auto var in m_Inds)
+		{
+			auto len = var->line.size();
+			Debug::Log(var->m_name +": " + std::to_string(var->line[len - 1]));
+		}
+		Debug::Log("------------------------------------------------------------------------------------------");
+
+		for each (auto var in m_Analyzers)
+		{
+			var->printResult();
+		}
+		Debug::Log("------------------------------------------------------------------------------------------");
+
+	}
+
+
+	void deleteElements()
+	{
 		for each (auto var in m_Inds)
 		{
 			delete var;
 		}
+
+		for each (auto var in m_Analyzers)
+		{
+			delete var;
+		}
+	}
+
+	double end(double close)
+	{ 
 
 		return getEQ(close);
 	};
@@ -41,7 +138,7 @@ public:
 	void Orderer(int candleIndex, bool isbuy,std::string reason)
 	{
 		double ret = 0;
-		double close = m_Data->close[candleIndex];
+		double close = m_Data->open[candleIndex+1];
 		if (isbuy)
 		{
 			if (m_buyprice == -1)
@@ -102,7 +199,7 @@ public:
 		for (size_t i = 0; i < m_Data->close.size(); i++)
 		{
 			next(i);
-			m_eqQurve.push_back(getEQ(m_Data->close[i]));
+			m_eqQurve.push_back(getEQ(m_Data->open[i+1]));
 		}
 
 		for (size_t i = 0; i < m_Analyzers.size(); i++)

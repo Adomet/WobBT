@@ -149,3 +149,36 @@ public:
 public:
 	Strategy& m_strat;
 };
+
+
+class ProfitFactor :public Analyzer
+{
+public:
+	ProfitFactor(Strategy& strat) :m_strat(strat) { m_name = "ProfitFactor"; };
+	~ProfitFactor() = default;
+
+	double run()
+	{
+		auto data = m_strat.m_PNL;
+		size_t dataSize = data.size();
+
+		double Psum = 0.0;
+		double Nsum = 0.0;
+
+		for (size_t i = 0; i < dataSize; i++)
+		{
+			if (data[i] > 0)
+			{
+				Psum += data[i];
+			}
+			else
+			{
+				Nsum += data[i];
+			}
+		}
+		m_Result = (Psum /  (-Nsum));
+		return m_Result;
+	};
+public:
+	Strategy& m_strat;
+};

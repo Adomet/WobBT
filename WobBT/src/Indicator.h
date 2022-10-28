@@ -16,15 +16,17 @@ public:
 
 
 public:
+	std::string m_name = "Indicator";
 	std::vector<double> line;
 	OHLC* m_ohlc;
 	int init_period = 0;
+	bool isSubplot = false;
 };
 
 class SMA : public Indicator
 {
 public:
-	SMA(OHLC* ohlc, int period):Indicator(ohlc) { m_period = std::max(min_period, period); init(); };
+	SMA(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = std::max(min_period, period); init(); m_name = "SMA"; };
 	~SMA() {};
 	void init()
 	{
@@ -58,7 +60,7 @@ public:
 class EMA : public Indicator
 {
 public:
-	EMA(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = std::max(min_period, period); init(); };
+	EMA(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = std::max(min_period, period); init(); m_name = "EMA";};
 	~EMA() {};
 	void init()
 	{
@@ -92,7 +94,7 @@ public:
 class DEMA : public Indicator
 {
 public:
-	DEMA(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = std::max(min_period, period); init(); };
+	DEMA(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = std::max(min_period, period); init(); m_name = "DEMA"; };
 	~DEMA() {};
 	void init()
 	{
@@ -126,7 +128,7 @@ public:
 class TEMA : public Indicator
 {
 public:
-	TEMA(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = std::max(min_period, period); init(); };
+	TEMA(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = std::max(min_period, period); init(); m_name = "TEMA";};
 	~TEMA() {};
 	void init()
 	{
@@ -159,7 +161,7 @@ public:
 class RSI : public Indicator
 {
 public:
-	RSI(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = period; init(); };
+	RSI(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = period; init(); m_name = "RSI"; isSubplot = true; };
 	~RSI() {};
 	void init()
 	{
@@ -199,14 +201,13 @@ public:
 public:
 	int min_period = 2;
 	int m_period;
-
 };
 
 
 class ADX : public Indicator
 {
 public:
-	ADX(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = std::max(min_period, period); init(); };
+	ADX(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = std::max(min_period, period); init(); m_name = "ADX"; isSubplot = true;};
 	~ADX() {};
 	void init()
 	{
@@ -240,7 +241,7 @@ public:
 class ATR : public Indicator
 {
 public:
-	ATR(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = std::max(min_period, period); init(); };
+	ATR(OHLC* ohlc, int period) :Indicator(ohlc) { m_period = std::max(min_period, period); init();m_name = "ATR"; isSubplot = true; };
 	~ATR() {};
 	void init()
 	{
@@ -274,7 +275,7 @@ public:
 class TD9 : public Indicator
 {
 public:
-	TD9(OHLC* ohlc) :Indicator(ohlc) {init();};
+	TD9(OHLC* ohlc) :Indicator(ohlc) {init();m_name = "TD9"; isSubplot = true;};
 	~TD9() {};
 	void init()
 	{
@@ -318,7 +319,7 @@ public:
 class CrossOver : public Indicator
 {
 public:
-	CrossOver(OHLC* ohlc, std::vector<double>* line1, std::vector<double>* line2) :m_line1(*line1), m_line2(*line2), Indicator(ohlc) { init(); };
+	CrossOver(OHLC* ohlc, std::vector<double>* line1, std::vector<double>* line2) :m_line1(*line1), m_line2(*line2), Indicator(ohlc) { init();m_name = "CrossOver";  isSubplot = true;};
 	~CrossOver() {};
 	void init()
 	{
@@ -349,7 +350,7 @@ public:
 class SuperTrend : public Indicator
 {
 public:
-	SuperTrend(OHLC* ohlc, int period, double multi) :Indicator(ohlc) { m_period = period; m_multi = std::max(0.001, multi); init(); };
+	SuperTrend(OHLC* ohlc, int period, double multi) :Indicator(ohlc) { m_period = period; m_multi = std::max(0.001, multi); init(); m_name = "SuperTrend"; isSubplot = true;};
 	~SuperTrend() {};
 	void init()
 	{

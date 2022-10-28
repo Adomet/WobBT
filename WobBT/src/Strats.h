@@ -165,14 +165,6 @@ public:
             Debug::Log("------------------------------------------------------------------------------------------");
             Debug::Log("candleIndex:"      + std::to_string(candleIndex) + " => open:" + std::to_string(m_Data->open[candleIndex]) + " high:" + std::to_string(m_Data->high[candleIndex]) + " low:" + std::to_string(m_Data->low[candleIndex]) + " close:" + std::to_string(m_Data->close[candleIndex]) + " volume:" + std::to_string(m_Data->volume[candleIndex]));
             Debug::Log("isbull: "          + std::to_string(isbull));
-            Debug::Log("strd: "            + std::to_string(strd));
-            Debug::Log("adx:  "            + std::to_string(adx));
-            Debug::Log("atr:  "            + std::to_string(atr));
-            Debug::Log("td9:  "            + std::to_string(td9));
-            Debug::Log("bull_rsi:  "       + std::to_string(bull_rsi));
-            Debug::Log("bull_tema: "       + std::to_string(bull_tema));
-            Debug::Log("bear_rsi:  "       + std::to_string(bear_rsi));
-            Debug::Log("bear_tema: "       + std::to_string(bear_tema));
             Debug::Log("diff_tema_heigh: " + std::to_string(bull_diff_tema_heigh));
             Debug::Log("diff_tema_low: "   + std::to_string(bear_diff_tema_low));
             Debug::Log("trade_count: "     + std::to_string(m_tradeCount));
