@@ -1,9 +1,11 @@
-cmake_minimum_required(VERSION 3.16)
-project(WobBT LANGUAGES CXX)
+cmake_minimum_required(VERSION 2.8.12)
+project(WobBT CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+elseif(MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
+endif()
 
 add_executable(WobBT
     src/WobBT.cpp
@@ -12,14 +14,17 @@ add_executable(WobBT
     src/OHLC.cpp
 )
 
-target_include_directories(WobBT PRIVATE
+include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/Dependencies
     ${CMAKE_CURRENT_SOURCE_DIR}/Dependencies/python/include
 )
 
 if(UNIX AND NOT APPLE)
+    find_package(Threads REQUIRED)
     find_package(CURL REQUIRED)
     find_package(OpenSSL REQUIRED)
-    target_link_libraries(WobBT PRIVATE CURL::libcurl OpenSSL::SSL OpenSSL::Crypto pthread)
+
+    include_directories(${CURL_INCLUDE_DIRS} ${OPENSSL_INCLUDE_DIR})
+    target_link_libraries(WobBT ${CURL_LIBRARIES} ${OPENSSL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 endif()

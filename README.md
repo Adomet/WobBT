@@ -11,6 +11,8 @@ sudo apt update
 sudo apt install -y build-essential cmake libcurl4-openssl-dev libssl-dev python3
 ```
 
+`CMake 2.8.12+` is supported for this project.
+
 Build:
 
 ```bash
