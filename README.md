@@ -8,10 +8,8 @@ Install dependencies (Ubuntu/Debian):
 
 ```bash
 sudo apt update
-sudo apt install -y build-essential cmake libcurl4-openssl-dev libssl-dev python3
+sudo
 ```
-
-`CMake 2.8.12+` is supported for this project.
 
 Build:
 
@@ -30,8 +28,8 @@ Run:
 Set API keys securely before running (Linux):
 
 ```bash
-export BINANCE_API_KEY="your_api_key"
-export BINANCE_API_SECRET="your_api_secret"
+export BINANCE_API_KEY="YFcu43KTUUgWpfEr9fGP1AaIV5gRqpVceSA0VQzh3qgcv9eztlppgmfwJ4lvbgAc"
+export BINANCE_API_SECRET="YFcu43KTUUgWpfEr9fGP1AaIV5gRqpVceSA0VQzh3qgcv9eztlppgmfwJ4lvbgAc"
 ./build/WobBT
 ```
 
