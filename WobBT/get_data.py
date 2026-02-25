@@ -5,7 +5,9 @@ import sys
 
 def get_Date_Data(fromdate,todate,timeframe,target,reGet):
     client = Client(BINANCE.get("key"),BINANCE.get("secret"))
-    path = "data/"+target+"-"+COIN_REFER+"_"+timeframe+"_"+str(fromdate)+"="+str(todate)+".csv"
+    data_dir = "data"
+    os.makedirs(data_dir, exist_ok=True)
+    path = os.path.join(data_dir, target + "-" + COIN_REFER + "_" + timeframe + "_" + str(fromdate) + "=" + str(todate) + ".csv")
     if(os.path.exists(path) and not reGet):
         print("Data already exist: " + path)
         return path
@@ -76,6 +78,7 @@ if __name__ == '__main__':
     if(len(sys.argv) > 1):
         print("BackTest Date: " + str(sys.argv[1]))
         date = str(sys.argv[1])
+        COIN_TARGET = str(sys.argv[2])
         DateInit(date)
     else:
         StdDateInit(reget) 

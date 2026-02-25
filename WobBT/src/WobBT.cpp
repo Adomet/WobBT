@@ -5,116 +5,230 @@
 #include <algorithm>
 #include <map>
 #include <future>
-#include "WobBTApp.h"
+#include <cmath>
 #include "Cerebro.h"
 #include "Analyzers.h"
-// strats to use at backtest
 #include "Strats.h"
+#include "Binance.h"
 
-struct ReturnPayload
+enum RetVal
 {
-public:
-    int param = 0;
-    double ret = 0;
+    Ado, All, Return,Cash, TradeCount , Sharpe
 };
 
-template <class T>
-double rundata(std::vector<int> params,OHLC* data,bool showAnalysis,bool showPlot)
+static void addDefaultAnalyzers(Cerebro& cerebro, Strategy& strat)
 {
+    cerebro.addAnalyzer(new TotalClosed(strat));
+    cerebro.addAnalyzer(new TotalWon(strat));
+    cerebro.addAnalyzer(new TotalLost(strat));
+    cerebro.addAnalyzer(new ReturnPNL(strat));
+    cerebro.addAnalyzer(new WinStreaks(strat));
+    cerebro.addAnalyzer(new LoseStreaks(strat));
+    cerebro.addAnalyzer(new WinRate(strat));
+    cerebro.addAnalyzer(new MaxDD(strat));
+    cerebro.addAnalyzer(new DrawDown(strat));
+    cerebro.addAnalyzer(new AvgDD(strat));
+    cerebro.addAnalyzer(new Expectancy(strat));
+    cerebro.addAnalyzer(new ProfitFactor(strat));
+    cerebro.addAnalyzer(new SQN(strat));
+    cerebro.addAnalyzer(new SharpeRatio(strat));
+}
+
+static double computeScore(const CerebroResult& r, RetVal retval)
+{
+    double growth = r.getResult<ReturnPNL>()/1000.0;
+    double maxDD = r.getResult<MaxDD>();
+    double avgDD = r.getResult<AvgDD>();
+    double sqn = r.getResult<SQN>();
+    double expectancy = r.getResult<Expectancy>();
+    double tradeCount = r.getResult<TotalClosed>();
+    double winRate = r.getResult<WinRate>();
+    double sharpe = r.getResult<SharpeRatio>();
+    double profitFactor = r.getResult<ProfitFactor>();
+    double res = 0;
+    switch (retval)
+    {
+    case Ado:
+        res = (std::sqrt(growth)  * sqn * sharpe) / ((avgDD * std::sqrt(maxDD) ) + 1.0);
+        break;
+    case All:
+        res = std::sqrt(growth)* profitFactor * expectancy * sharpe * sqn / ((avgDD * maxDD) + 1.0);
+        break;
+    case Return:
+        res = growth / ((avgDD * maxDD) + 1.0);
+        break;
+    case Cash:
+        res = r.getResult<ReturnPNL>();
+        break;
+    case TradeCount:
+        res = tradeCount * tradeCount* tradeCount* std::sqrt(growth);
+        break;
+    case Sharpe:
+        res = sharpe;
+    default:
+        break;
+    }
+    return std::isfinite(res) ? res : 0.0;
+}
+
+
+
+template <class T>
+double walkForward(int trainDays, int testDays, OHLC* data, std::vector<int> params, RetVal retVal = RetVal::Return)
+{
+    const int cpd = OHLC::candlesPerDay(data->m_CandleType);
+    if (cpd <= 0) return 0;
+
+    const int trainCandles = trainDays * cpd;
+    const int testCandles = testDays * cpd;
+    const size_t totalCandles = data->close.size();
+
+    if ((size_t)(trainCandles + testCandles) > totalCandles)
+    {
+        Debug::Log("walkForward: not enough data (need " + std::to_string(trainCandles + testCandles) + " candles)");
+        return 0;
+    }
+
+    double totalScore = 0;
+    int blockCount = 0;
+    // Data: index 0 = oldest, last = most recent. Test must be most recent.
+    // Block 0: test [N-tc, N], block 1: test [N-2*tc, N-tc], etc.
+    size_t testStart = totalCandles - testCandles;
+
+    while (testStart >= trainCandles)
+    {
+        Debug::Log("=================== Block " + std::to_string(blockCount) + " ==========================");
+
+        OHLC trainData = data->slice(0, testStart);
+        OHLC testData = data->slice(testStart, testStart + testCandles); 
+
+        std::vector<int> bestParams = optimizeStrat<T>(params, &trainData, retVal);
+        double trainScore = run<T>(bestParams, &trainData, false, false, false, retVal);
+        double oosScore = run<T>(bestParams, &testData, false, true, false, retVal);
+
+        Debug::Log("Train score: " + std::to_string(trainScore) + " | Test (OOS) score: " + std::to_string(oosScore));
+
+        totalScore += oosScore;
+        blockCount++;
+        params = bestParams;
+        if (testStart < testCandles) break;
+        testStart -= testCandles;
+    }
+
+    return blockCount > 0 ? totalScore / blockCount : 0;
+}
+
+template <class T>
+double trainTest(int trainDays, int testDays, OHLC* data, std::vector<int> params, RetVal retVal = RetVal::Return)
+{
+    const int cpd = OHLC::candlesPerDay(data->m_CandleType);
+    if (cpd <= 0) return 0;
+
+    const int trainCandles = trainDays * cpd;
+    const int testCandles = testDays * cpd;
+    const size_t totalCandles = data->close.size();
+
+    if ((size_t)(trainCandles + testCandles) > totalCandles)
+    {
+        Debug::Log("walkForward: not enough data (need " + std::to_string(trainCandles + testCandles) + " candles)");
+        return 0;
+    }
+
+    size_t testEnd = totalCandles - testCandles;
+    size_t trainEnd = testEnd - trainCandles;
+
+    OHLC trainData = data->slice(trainEnd, testEnd);
+    OHLC testData = data->slice(testEnd, totalCandles);
+
+    std::vector<int> bestParams = optimizeStrat<T>(params, &trainData, retVal);
+    double trainScore = run<T>(bestParams, &trainData, false, false, false, Cash);
+    double oosScore = run<T>(bestParams, &testData, false, false, false, Cash);
+
+    Debug::Log("Train score: " + std::to_string(trainScore) + " | Test (OOS) score: " + std::to_string(oosScore));
+    return oosScore;
+}
+
+template <class T>
+double run(std::vector<int> params, OHLC* data, bool optimize, bool showAnalysis, bool showPlot, RetVal retval = RetVal::Cash)
+{
+    if (optimize)
+    {
+        return run<T>(optimizeStrat<T>(params, data, retval), data, false, showAnalysis, showPlot, retval);
+    }
+
     T mystrat(data, params);
     Cerebro cerebro(&mystrat);
-    cerebro.setCommissons(0.001);
-    cerebro.setStartCash(1000);
-    
-    ReturnPNL*    ret     = new ReturnPNL(mystrat);
-    WinStreaks*   winS    = new WinStreaks(mystrat);
-    LoseStreaks*  loseS   = new LoseStreaks(mystrat);
-    WinRate*      winrate = new WinRate(mystrat);
-    MaxDD*        maxDD   = new MaxDD(mystrat);
-    SQN*          sqn     = new SQN(mystrat);
+    addDefaultAnalyzers(cerebro, mystrat);
 
-    cerebro.addAnalyzer(ret    );
-    cerebro.addAnalyzer(winS   );
-    cerebro.addAnalyzer(loseS  );
-    cerebro.addAnalyzer(winrate);
-    cerebro.addAnalyzer(maxDD  );
-    cerebro.addAnalyzer(sqn    );
+    CerebroResult result = cerebro.run();
+    double res = computeScore(result, retval);
 
-    // Get result and print result
-    cerebro.run();
-
-    //double res = sqrt(ret->m_Result) * sqn->m_Result * winrate->m_Result * mystrat.m_winTradeCount / maxDD->m_Result;
-    double res = sqrt(ret->m_Result) * sqn->m_Result * winrate->m_Result * mystrat.m_winTradeCount / maxDD->m_Result;
     Debug::Log(paramStr(params) + "::" + std::to_string(res) + " ::: Result");
-
     if (showAnalysis)
-        mystrat.printResults();
+        result.print();
 
     if (showPlot)
-        mystrat.Plot();
+    {
+        try
+        {
+            mystrat.Plot(false);
+        }
+        catch (const std::exception& e)
+        {
+            Debug::Log("Plot error: " + std::string(e.what()));
+        }
+    }
 
     mystrat.deleteElements();
     return res;
 }
 
+
+
 static std::mutex s_runData_mutex;
 template <class T>
-void rundataAsync(std::vector<int> params,OHLC* data,int i, std::vector<ReturnPayload>* result_Payloads)
+void rundataAsync(std::vector<int> params, OHLC* data, int i, std::vector<CerebroResult>* results, RetVal retval)
 {
     T mystrat(data, params);
     Cerebro cerebro(&mystrat);
-    cerebro.setCommissons(0.001);
-    cerebro.setStartCash(1000);
+    addDefaultAnalyzers(cerebro, mystrat);
 
-    ReturnPNL* ret = new ReturnPNL(mystrat);
-    WinStreaks* winS = new WinStreaks(mystrat);
-    LoseStreaks* loseS = new LoseStreaks(mystrat);
-    WinRate* winrate = new WinRate(mystrat);
-    MaxDD* maxDD = new MaxDD(mystrat);
-    SQN* sqn = new SQN(mystrat);
-
-    cerebro.addAnalyzer(ret);
-    cerebro.addAnalyzer(winS);
-    cerebro.addAnalyzer(loseS);
-    cerebro.addAnalyzer(winrate);
-    cerebro.addAnalyzer(maxDD);
-    cerebro.addAnalyzer(sqn);
-
-    // Get result and print result
-    cerebro.run();
-
-    double res = sqrt(ret->m_Result) * sqn->m_Result * winrate->m_Result * mystrat.m_winTradeCount / maxDD->m_Result;
-
-    ReturnPayload payload;
-    payload.param = params[i];
-    payload.ret = res;
+    CerebroResult result = cerebro.run();
+    result.scan_param = params[i];
+    result.score = computeScore(result, retval);
 
     std::lock_guard<std::mutex> lock(s_runData_mutex);
-    result_Payloads->push_back(payload);
-    //Debug::Log(paramStr(params) + ":::" + std::to_string(ret));
+    results->push_back(result);
 
     mystrat.deleteElements();
 }
 
 template <class T>
-std::vector<int>  optimizeStrat(std::vector<int> oldparams, OHLC* data, int scan_range = 4)
+std::vector<int>  optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval = Return, int scan_range = 16, bool singleStep = false)
 {
-    std::vector<int> newparams = OptRunData<T>(data, oldparams, scan_range);
+    std::vector<int> newparams = OptRunData<T>(data, oldparams, scan_range, singleStep, retval);
     if (newparams == oldparams)
     {
-        if (scan_range > 100)
-            return newparams;
+        if (scan_range > 30)
+        {
+            if (!singleStep)
+                return optimizeStrat<T>(newparams, data, retval, scan_range, true);
+            else
+                return newparams;
+        }
         else
-            return optimizeStrat<T>(newparams,data,scan_range * 2);
+        {
+            return optimizeStrat<T>(newparams, data, retval,scan_range * 2);
+        }
     }
     else
     {
-        return optimizeStrat<T>(newparams, data, scan_range);
+        return optimizeStrat<T>(newparams, data, retval, scan_range);
     }
 }
 
 template <class T>
-std::vector<int>  OptRunData(OHLC* data, std::vector<int> oldparams, int scan_range)
+std::vector<int>  OptRunData(OHLC* data, std::vector<int> oldparams, int scan_range,bool singleStep, RetVal retval)
 {
     Debug::Log("Optimizing...");
     Debug::Log("scan_range...:" + std::to_string(scan_range));
@@ -127,21 +241,19 @@ std::vector<int>  OptRunData(OHLC* data, std::vector<int> oldparams, int scan_ra
         if (params[i] == -1)
             continue;
 
-        //Timer timer("param search");
         int step = std::max(params[i] / 100, 1);
-        step = 1;
+        if(singleStep) step = 1;
         int diff = step * scan_range;
         int low  = params[i] - diff;
         int high = params[i] + diff;
 
-        std::vector<ReturnPayload> result_Payloads;
-
+        std::vector<CerebroResult> results;
         std::vector<std::future<void>> m_futures;
 
         for (int p = low; p <= high; p += step)
         {
             params[i] = std::max(p, 1);
-            m_futures.push_back(std::async(std::launch::async, rundataAsync<T>, params, data, i, &result_Payloads));
+            m_futures.push_back(std::async(std::launch::async, rundataAsync<T>, params, data, i, &results, retval));
         }
 
         for (size_t f = 0; f < m_futures.size(); f++)
@@ -152,19 +264,16 @@ std::vector<int>  OptRunData(OHLC* data, std::vector<int> oldparams, int scan_ra
         int best_param = -1;
         double best_value = 0;
 
-        for (size_t x = 0; x < result_Payloads.size(); x++)
+        for (const auto& r : results)
         {
-            auto ret = result_Payloads[x].ret;
-            auto p = result_Payloads[x].param;
-
-            if (best_value < ret)
+            if (best_value < r.score)
             {
-                best_value = ret;
-                best_param = p;
+                best_value = r.score;
+                best_param = r.scan_param;
             }
-            else if (best_value == ret && best_param > p)
+            else if (best_value == r.score && best_param > r.scan_param)
             {
-                best_param = p;
+                best_param = r.scan_param;
             }
         }
 
@@ -180,7 +289,8 @@ std::string paramStr(std::vector<int>& params)
     std::string msg = "{";
     for (size_t i = 0; i < params.size(); i++)
     {
-        msg += std::to_string(params[i]) + ",";
+        if (i > 0) msg += ",";
+        msg += std::to_string(params[i]);
     }
     msg += "}";
     return msg;
@@ -194,81 +304,51 @@ void printHeader()
     Debug::Log("");
 }
 
-TA_RetCode initTaLib()
+template <class T>
+double runLive(std::vector<int> params)
 {
-    auto retCode = TA_Initialize();
-    if (retCode != TA_SUCCESS) {
-        std::cout << "CANNOT INITIALIZE TA-LIB!" << std::endl;
-    }
+    BinanceConfig cfg;
+    cfg.apiKey = "";      // Set your Binance API key
+    cfg.apiSecret = "";   // Set your Binance API secret
 
-    return retCode;
+    cfg.symbol = "AVAXUSDT";
+    cfg.candleType = OHLC::m15;
+    cfg.warmupCandles = 500;
+    cfg.pollIntervalSec = 10;
+
+    BinanceBroker bb(cfg);
+    T mystrat(bb.getOHLC(), params);
+    Cerebro cerebro(&mystrat);
+    bb.runLive(cerebro);
+    Debug::Log(paramStr(params) + " ::: Live");
+    mystrat.deleteElements();
+    return 0;
 }
-
 
 int runWobBT(int argc, char** argv)
 {
     printHeader();
+    //2020-09-01
+    //2022-06-11
 
-    initTaLib();
+    //OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2022-06-11", false);
+    //Timer timer("All");
+    
+    //run<MyStratV1>({ 255, 993, 149, 23, 408, 731, 1383, 16, 566, 337, 125, 144, 180, 789, 524, 242, 164, 69, 38, 68 }, &data, false, true, true, All);
+    //run<MyStratV1>({ 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, &data, false, true, true, All);
+    //run<MyStratV1>({ 263,930,150,24,294,765,1382,20,570,330,126,139,204,1135,533,220,131,77,36,69 }, &data, true, true, true, Cash);
 
-    std::string initDate  = "2020-09-23";
-    std::string stdDate   = "2021-01-17";
-    std::string startDate = "2022-09-01";
+    //trainTest<MyStratV1>(1000, 360, &data, { 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, All);
+    //walkForward<MyStratV1>(720, 360, &data, { 260, 960, 149, 23, 313, 731, 1382, 16, 568, 341, 125, 148, 165, 786, 524, 204, 169, 35, 38, 69 }, Ado);
+    // 
+    // 
+    runLive<MyStratV1>({ 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 });  // keys in Binance.h
 
-    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, initDate,false);
-
-    Timer timer("All");
-
-    std::vector<double> results;
-
-    results.push_back(rundata<MyStratV1>(optimizeStrat<MyStratV1>({ 2,271,2,910,160,56,259,254,1617,19,525,348,101,175,340,1161,572,280,160,-1,-1 },&data),&data, true, false));
-    //results.push_back(rundata<MyStratV1>({ 2,271,2,910,160,56,259,254,1617,19,525,348,101,175,340,1161,572,280,160,-1,-1, },&data,true,false));
-    //results.push_back(rundata<MyStratV1>({2,273,2,876,159,56,347,248,1617,19,525,348,101,180,340,1156,567,280,160,-1,-1,},&data,true,false));
-
-    auto best = std::max_element(results.begin(),results.end()); 
-    Debug::Log("Best result: " + std::to_string(*best));
-
-    // By By
-    TA_Shutdown();
+    
     return 0;
 }
-
-
 
 int main(int argc, char** argv)
 {
     return runWobBT(argc,argv);
 }
-
-
-//====================================================================================================================================================================================
-// Libraries to use
-// GUI => Imgui
-// TA  => ta-lib
-// Plotting => Matplotlib
-// Template    => Walnut
-// Render API  => Vulkan
-// BacktestLib => my lib
-
-// TODO : 
-// X Fist backtest (no graph) single Thread just return stats
-// X Add someindicators
-// X Add some analyzers
-// X backtest with a graph some how
-// X Multi thread backtest
-// (No need) GPU backtest
-// Interactive backtesting!!!
-
-// wanted result: Backtest Library that looking good with advanced strat cutomization and fastest backtester lets goooo
-
-
-// ===================== Ideas ==================================== 
-// slider based realtime strat result update
-// Custom Ploting api
-// Advanced Cutomizeablty
-
-//====================================================================================================================================================================================
-
-// Create a WobBTApp with some arguments when needed
-// App will take a backtester at the end of operations return a backtester with data
-// After all opereations done press a ImGui button to save backtester params to a log file (log.txt) i donno

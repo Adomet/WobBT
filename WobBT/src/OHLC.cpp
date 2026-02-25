@@ -1,4 +1,5 @@
 #include "OHLC.h"
+#include <algorithm>
 
 OHLC::OHLC(std::vector<double> open, std::vector<double>high, std::vector<double> low, std::vector<double> close, std::vector<double> volume, CANDLE_TYPE candleType)
 {
@@ -14,7 +15,7 @@ OHLC::OHLC(std::vector<double> open, std::vector<double>high, std::vector<double
 OHLC::~OHLC()
 {}
 
-OHLC  OHLC::CSV2OHLC(std::string filepath, CANDLE_TYPE candleType, std::string backtestDate, bool reget)
+OHLC  OHLC::CSV2OHLC(std::string filepath, std::string tradeCoin, std::string stableCoin, CANDLE_TYPE candleType, std::string backtestDate, bool reget)
 {
 
     // Add date
@@ -76,10 +77,10 @@ OHLC  OHLC::CSV2OHLC(std::string filepath, CANDLE_TYPE candleType, std::string b
         printf("Get Data !!!");
         printf("\n");
 
-        std::string pyCall = "py get_data.py " + backtestDate;
+        std::string pyCall = "py get_data.py " + backtestDate +" " +tradeCoin;
         int retCode = system(pyCall.c_str());
 
-        return CSV2OHLC(filepath, candleType,backtestDate,false);
+        return CSV2OHLC(filepath,tradeCoin,stableCoin, candleType,backtestDate,false);
     }
 
     return OHLC(open, high, low, close, volume, candleType);
@@ -89,15 +90,20 @@ OHLC  OHLC::CSV2OHLC(std::string filepath, CANDLE_TYPE candleType, std::string b
 std::string OHLC::getDataFilePath(std::string tradeCoin, std::string stableCoin, OHLC::CANDLE_TYPE candleType, std::string backtestDate)
 {
     // Get date
-    const time_t now = time(0);
+    time_t now = time(0);
     tm tPtr;
+    now += (86400);
     localtime_s(&tPtr, &now);
     size_t n = 2;
     std::string yr_s = std::to_string(tPtr.tm_year + 1900);
-    std::string mon_s = std::to_string(tPtr.tm_mon + 1);
+    std::string mon_s = std::to_string(tPtr.tm_mon+1);
+
+
+
+
     int p = n - std::min(n, mon_s.size());
     mon_s = std::string(p, '0').append(mon_s);
-    std::string mday_s = std::to_string(tPtr.tm_mday + 1);
+    std::string mday_s = std::to_string(tPtr.tm_mday);
     p = n - std::min(n, mday_s.size());
     mday_s = std::string(p, '0').append(mday_s);
 
@@ -109,8 +115,41 @@ std::string OHLC::getDataFilePath(std::string tradeCoin, std::string stableCoin,
 
 OHLC OHLC::getData(std::string tradeCoin, std::string stableCoin, OHLC::CANDLE_TYPE type, std::string backtestDate,bool reget)
 {
-    // Get Data YYYY-MM-DD
     std::string path = OHLC::getDataFilePath(tradeCoin, stableCoin, type, backtestDate);
-    OHLC data = OHLC::CSV2OHLC(path, type, backtestDate, reget);
+    OHLC data = OHLC::CSV2OHLC(path,tradeCoin,stableCoin, type, backtestDate, reget);
     return data;
+}
+
+int OHLC::candlesPerDay(CANDLE_TYPE type)
+{
+    switch (type)
+    {
+    case m1:  return 1440;
+    case m5:  return 288;
+    case m15: return 96;
+    case m30: return 48;
+    case h1:  return 24;
+    case h2:  return 12;
+    case h4:  return 6;
+    case h12: return 2;
+    case d1:  return 1;
+    case w1:  return 1;  // 1 block = 1 week
+    default:  return 96;
+    }
+}
+
+OHLC OHLC::slice(size_t start, size_t end) const
+{
+    size_t n = close.size();
+    end = std::min(end, n);
+    if (start >= end) return OHLC({}, {}, {}, {}, {}, m_CandleType);
+
+    return OHLC(
+        std::vector<double>(open.begin() + start, open.begin() + end),
+        std::vector<double>(high.begin() + start, high.begin() + end),
+        std::vector<double>(low.begin() + start, low.begin() + end),
+        std::vector<double>(close.begin() + start, close.begin() + end),
+        std::vector<double>(volume.begin() + start, volume.begin() + end),
+        m_CandleType
+    );
 }

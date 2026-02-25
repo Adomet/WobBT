@@ -38,16 +38,17 @@ public:
         case d1:  return "1d";
         case w1:  return "1w";
         default:  return "1m";
-            break;
         }
     }
 
     OHLC(std::vector<double> open, std::vector<double> high, std::vector<double> low, std::vector<double> close, std::vector<double> volume, CANDLE_TYPE candleType);
     ~OHLC();
 
-    static OHLC CSV2OHLC(std::string filepath, CANDLE_TYPE candleType, std::string backtestDate, bool reget);
+    static OHLC CSV2OHLC(std::string filepath, std::string tradeCoin, std::string stableCoin, CANDLE_TYPE candleType, std::string backtestDate, bool reget);
     static std::string OHLC::getDataFilePath(std::string tradeCoin, std::string stableCoin, OHLC::CANDLE_TYPE candleType, std::string backtestDate);
     static OHLC OHLC::getData(std::string tradeCoin, std::string stableCoin, OHLC::CANDLE_TYPE type, std::string backtestDate,bool reget);
+    static int candlesPerDay(CANDLE_TYPE type);
+    OHLC slice(size_t start, size_t end) const;
 
 public:
     std::vector<double> open;
