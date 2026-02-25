@@ -1,5 +1,6 @@
 #include "OHLC.h"
 #include <algorithm>
+#include <ctime>
 
 OHLC::OHLC(std::vector<double> open, std::vector<double>high, std::vector<double> low, std::vector<double> close, std::vector<double> volume, CANDLE_TYPE candleType)
 {
@@ -77,7 +78,13 @@ OHLC  OHLC::CSV2OHLC(std::string filepath, std::string tradeCoin, std::string st
         printf("Get Data !!!");
         printf("\n");
 
-        std::string pyCall = "py get_data.py " + backtestDate +" " +tradeCoin;
+        std::string pyCall =
+#ifdef _WIN32
+            "py get_data.py ";
+#else
+            "python3 get_data.py ";
+#endif
+        pyCall += backtestDate + " " + tradeCoin;
         int retCode = system(pyCall.c_str());
 
         return CSV2OHLC(filepath,tradeCoin,stableCoin, candleType,backtestDate,false);
@@ -93,7 +100,11 @@ std::string OHLC::getDataFilePath(std::string tradeCoin, std::string stableCoin,
     time_t now = time(0);
     tm tPtr;
     now += (86400);
+#ifdef _WIN32
     localtime_s(&tPtr, &now);
+#else
+    localtime_r(&now, &tPtr);
+#endif
     size_t n = 2;
     std::string yr_s = std::to_string(tPtr.tm_year + 1900);
     std::string mon_s = std::to_string(tPtr.tm_mon+1);

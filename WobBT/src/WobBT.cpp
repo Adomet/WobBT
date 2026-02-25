@@ -6,6 +6,9 @@
 #include <map>
 #include <future>
 #include <cmath>
+#include <cstdlib>
+#include <fstream>
+#include <unordered_map>
 #include "Cerebro.h"
 #include "Analyzers.h"
 #include "Strats.h"
@@ -15,6 +18,49 @@ enum RetVal
 {
     Ado, All, Return,Cash, TradeCount , Sharpe
 };
+
+static std::string trim(const std::string& s)
+{
+    const std::string ws = " \t\r\n";
+    const size_t start = s.find_first_not_of(ws);
+    if (start == std::string::npos) return "";
+    const size_t end = s.find_last_not_of(ws);
+    return s.substr(start, end - start + 1);
+}
+
+static std::unordered_map<std::string, std::string> loadDotEnv(const std::string& path)
+{
+    std::unordered_map<std::string, std::string> envMap;
+    std::ifstream file(path);
+    if (!file.is_open())
+        return envMap;
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+        std::string s = trim(line);
+        if (s.empty() || s[0] == '#')
+            continue;
+        if (s.rfind("export ", 0) == 0)
+            s = trim(s.substr(7));
+
+        const size_t eq = s.find('=');
+        if (eq == std::string::npos || eq == 0)
+            continue;
+
+        std::string key = trim(s.substr(0, eq));
+        std::string val = trim(s.substr(eq + 1));
+        if (val.size() >= 2)
+        {
+            const bool quoted = (val.front() == '"' && val.back() == '"') ||
+                                (val.front() == '\'' && val.back() == '\'');
+            if (quoted)
+                val = val.substr(1, val.size() - 2);
+        }
+        envMap[key] = val;
+    }
+    return envMap;
+}
 
 static void addDefaultAnalyzers(Cerebro& cerebro, Strategy& strat)
 {
@@ -308,8 +354,23 @@ template <class T>
 double runLive(std::vector<int> params)
 {
     BinanceConfig cfg;
-    cfg.apiKey = "";      // Set your Binance API key
-    cfg.apiSecret = "";   // Set your Binance API secret
+    const auto dotEnv = loadDotEnv(".env");
+
+    auto fromDotEnv = [&](const std::string& key) -> std::string {
+        const auto it = dotEnv.find(key);
+        return it == dotEnv.end() ? "" : it->second;
+    };
+
+    const char* apiKey = std::getenv("BINANCE_API_KEY");
+    const char* apiSecret = std::getenv("BINANCE_API_SECRET");
+    cfg.apiKey = fromDotEnv("BINANCE_API_KEY");
+    cfg.apiSecret = fromDotEnv("BINANCE_API_SECRET");
+    if (apiKey && *apiKey) cfg.apiKey = apiKey;       // env var overrides .env
+    if (apiSecret && *apiSecret) cfg.apiSecret = apiSecret;
+    if (cfg.apiKey.empty() || cfg.apiSecret.empty())
+    {
+        Debug::Log("BINANCE_API_KEY / BINANCE_API_SECRET not set in .env or env vars. Running in simulation mode (no real orders).");
+    }
 
     cfg.symbol = "AVAXUSDT";
     cfg.candleType = OHLC::m15;
@@ -331,18 +392,20 @@ int runWobBT(int argc, char** argv)
     //2020-09-01
     //2022-06-11
 
-    //OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2022-06-11", false);
+    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2020-09-01", false);
     //Timer timer("All");
     
     //run<MyStratV1>({ 255, 993, 149, 23, 408, 731, 1383, 16, 566, 337, 125, 144, 180, 789, 524, 242, 164, 69, 38, 68 }, &data, false, true, true, All);
     //run<MyStratV1>({ 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, &data, false, true, true, All);
+    //run<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 }, &data, true, true, true, All);
     //run<MyStratV1>({ 263,930,150,24,294,765,1382,20,570,330,126,139,204,1135,533,220,131,77,36,69 }, &data, true, true, true, Cash);
 
     //trainTest<MyStratV1>(1000, 360, &data, { 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, All);
     //walkForward<MyStratV1>(720, 360, &data, { 260, 960, 149, 23, 313, 731, 1382, 16, 568, 341, 125, 148, 165, 786, 524, 204, 169, 35, 38, 69 }, Ado);
     // 
     // 
-    runLive<MyStratV1>({ 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 });  // keys in Binance.h
+
+    //runLive<MyStratV1>({ 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 });
 
     
     return 0;

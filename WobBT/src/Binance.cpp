@@ -18,6 +18,13 @@
 #include <algorithm>
 #include <iomanip>
 #include <ctime>
+#include <mutex>
+
+#ifndef _WIN32
+#include <curl/curl.h>
+#include <openssl/hmac.h>
+#include <openssl/evp.h>
+#endif
 
 
 BinanceBroker::BinanceBroker(const BinanceConfig& config)
@@ -553,12 +560,223 @@ std::string BinanceBroker::signRequest(const std::string& queryString) const
     return hexSig;
 }
 #else
-std::string BinanceBroker::httpGet(const std::string& url) const { return ""; }
-std::string BinanceBroker::httpGet(const std::string& url, const std::string& extraHeaders) const { return ""; }
-bool BinanceBroker::fetchWalletBalances(double& coin, double& cash) const { return false; }
-std::string BinanceBroker::formatCandleTime(long long openTimeMs) const { return ""; }
-long long BinanceBroker::candleIntervalMs() const { return 0; }
-std::pair<std::string, std::string> BinanceBroker::splitSymbolAssets() const { return { "", "" }; }
-std::string BinanceBroker::httpPost(const std::string& url, const std::string& queryString) { return ""; }
-std::string BinanceBroker::signRequest(const std::string& queryString) const { return ""; }
+namespace
+{
+size_t curlWriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
+{
+    const size_t totalSize = size * nmemb;
+    std::string* out = static_cast<std::string*>(userp);
+    out->append(static_cast<const char*>(contents), totalSize);
+    return totalSize;
+}
+
+void appendHeaderLines(struct curl_slist*& headers, const std::string& rawHeaders)
+{
+    size_t start = 0;
+    while (start < rawHeaders.size())
+    {
+        size_t end = rawHeaders.find("\r\n", start);
+        const size_t count = (end == std::string::npos) ? (rawHeaders.size() - start) : (end - start);
+        std::string line = rawHeaders.substr(start, count);
+        if (!line.empty())
+            headers = curl_slist_append(headers, line.c_str());
+        if (end == std::string::npos)
+            break;
+        start = end + 2;
+    }
+}
+}
+
+std::string BinanceBroker::httpGet(const std::string& url) const
+{
+    return httpGet(url, "");
+}
+
+std::string BinanceBroker::httpGet(const std::string& url, const std::string& extraHeaders) const
+{
+    static std::once_flag curlInitFlag;
+    std::call_once(curlInitFlag, []() { curl_global_init(CURL_GLOBAL_DEFAULT); });
+
+    CURL* curl = curl_easy_init();
+    if (!curl)
+        return "";
+
+    std::string response;
+    struct curl_slist* headers = nullptr;
+    appendHeaderLines(headers, extraHeaders);
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
+    if (headers)
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+    const CURLcode rc = curl_easy_perform(curl);
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+    if (headers)
+        curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+
+    if (rc != CURLE_OK || httpCode >= 400)
+        return "";
+    return response;
+}
+
+bool BinanceBroker::fetchWalletBalances(double& coin, double& cash) const
+{
+    if (m_config.apiKey.empty() || m_config.apiSecret.empty())
+        return false;
+
+    const auto assets = splitSymbolAssets();
+    if (assets.first.empty() || assets.second.empty())
+        return false;
+
+    const long long ts = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    std::string queryString = "timestamp=" + std::to_string(ts);
+    std::string signature = signRequest(queryString);
+    if (signature.empty())
+        return false;
+
+    std::string url = "https://api.binance.com/api/v3/account?" + queryString + "&signature=" + signature;
+    std::string headers = "X-MBX-APIKEY: " + m_config.apiKey + "\r\n";
+    std::string resp = httpGet(url, headers);
+    if (resp.empty())
+        return false;
+
+    auto extractFree = [&](const std::string& asset) -> double {
+        std::string marker = "\"asset\":\"" + asset + "\"";
+        size_t pos = resp.find(marker);
+        if (pos == std::string::npos)
+            return -1.0;
+        size_t freePos = resp.find("\"free\":\"", pos);
+        if (freePos == std::string::npos)
+            return -1.0;
+        freePos += 8; // len("\"free\":\"")
+        size_t end = resp.find("\"", freePos);
+        if (end == std::string::npos || end <= freePos)
+            return -1.0;
+        return std::strtod(resp.substr(freePos, end - freePos).c_str(), nullptr);
+    };
+
+    const double coinVal = extractFree(assets.first);
+    const double cashVal = extractFree(assets.second);
+    if (coinVal < 0.0 || cashVal < 0.0)
+        return false;
+
+    coin = coinVal;
+    cash = cashVal;
+    return true;
+}
+
+std::string BinanceBroker::formatCandleTime(long long openTimeMs) const
+{
+    const long long closeTimeMs = openTimeMs + candleIntervalMs();
+    std::time_t tt = (std::time_t)(closeTimeMs / 1000LL);
+    std::tm tmVal{};
+    localtime_r(&tt, &tmVal);
+    std::ostringstream ss;
+    ss << std::put_time(&tmVal, "%Y-%m-%d %H:%M:%S");
+    return ss.str();
+}
+
+long long BinanceBroker::candleIntervalMs() const
+{
+    switch (m_config.candleType)
+    {
+    case OHLC::m1:  return 60LL * 1000LL;
+    case OHLC::m5:  return 5LL * 60LL * 1000LL;
+    case OHLC::m15: return 15LL * 60LL * 1000LL;
+    case OHLC::m30: return 30LL * 60LL * 1000LL;
+    case OHLC::h1:  return 60LL * 60LL * 1000LL;
+    case OHLC::h2:  return 2LL * 60LL * 60LL * 1000LL;
+    case OHLC::h4:  return 4LL * 60LL * 60LL * 1000LL;
+    case OHLC::h12: return 12LL * 60LL * 60LL * 1000LL;
+    case OHLC::d1:  return 24LL * 60LL * 60LL * 1000LL;
+    case OHLC::w1:  return 7LL * 24LL * 60LL * 60LL * 1000LL;
+    default:        return 15LL * 60LL * 1000LL;
+    }
+}
+
+std::pair<std::string, std::string> BinanceBroker::splitSymbolAssets() const
+{
+    static const char* knownQuotes[] = { "USDT", "BUSD", "USDC", "BTC", "ETH", "BNB", "TRY", "EUR" };
+    for (const char* quote : knownQuotes)
+    {
+        const std::string q(quote);
+        if (m_config.symbol.size() > q.size() &&
+            m_config.symbol.compare(m_config.symbol.size() - q.size(), q.size(), q) == 0)
+        {
+            return { m_config.symbol.substr(0, m_config.symbol.size() - q.size()), q };
+        }
+    }
+    return { "", "" };
+}
+
+std::string BinanceBroker::httpPost(const std::string& url, const std::string& queryString)
+{
+    static std::once_flag curlInitFlag;
+    std::call_once(curlInitFlag, []() { curl_global_init(CURL_GLOBAL_DEFAULT); });
+
+    CURL* curl = curl_easy_init();
+    if (!curl)
+        return "";
+
+    std::string response;
+    struct curl_slist* headers = nullptr;
+    headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded");
+    headers = curl_slist_append(headers, ("X-MBX-APIKEY: " + m_config.apiKey).c_str());
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, queryString.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)queryString.size());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
+
+    const CURLcode rc = curl_easy_perform(curl);
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+
+    if (rc != CURLE_OK || httpCode >= 400)
+        return "";
+    return response;
+}
+
+std::string BinanceBroker::signRequest(const std::string& queryString) const
+{
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int hashLen = 0;
+    const unsigned char* result = HMAC(
+        EVP_sha256(),
+        m_config.apiSecret.data(),
+        (int)m_config.apiSecret.size(),
+        reinterpret_cast<const unsigned char*>(queryString.data()),
+        queryString.size(),
+        hash,
+        &hashLen);
+    if (!result || hashLen == 0)
+        return "";
+
+    static const char hex[] = "0123456789abcdef";
+    std::string hexSig;
+    hexSig.reserve(hashLen * 2);
+    for (unsigned int i = 0; i < hashLen; ++i)
+    {
+        hexSig += hex[(hash[i] >> 4) & 0x0F];
+        hexSig += hex[hash[i] & 0x0F];
+    }
+    return hexSig;
+}
 #endif

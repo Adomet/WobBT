@@ -13,3 +13,6 @@ bin-int/
 
 # Data
 *.csv
+
+# Secrets
+.env
