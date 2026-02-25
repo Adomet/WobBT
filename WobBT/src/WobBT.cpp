@@ -207,7 +207,7 @@ double trainTest(int trainDays, int testDays, OHLC* data, std::vector<int> param
 }
 
 template <class T>
-double run(std::vector<int> params, OHLC* data, bool optimize, bool showAnalysis, bool showPlot, RetVal retval = RetVal::Cash)
+double run(std::vector<int> params, OHLC* data, bool optimize, bool showAnalysis, bool showPlot, RetVal retval)
 {
     if (optimize)
     {
@@ -262,7 +262,7 @@ void rundataAsync(std::vector<int> params, OHLC* data, int i, std::vector<Cerebr
 }
 
 template <class T>
-std::vector<int>  optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval = Return, int scan_range = 16, bool singleStep = false)
+std::vector<int>  optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range, bool singleStep)
 {
     std::vector<int> newparams = OptRunData<T>(data, oldparams, scan_range, singleStep, retval);
     if (newparams == oldparams)
