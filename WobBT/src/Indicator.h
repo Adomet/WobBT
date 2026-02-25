@@ -794,7 +794,7 @@ public:
 	{
 
 		size_t closeLen               = m_ohlc->close.size();
-		Indicator& atr                = ATR(m_ohlc, m_period);
+		ATR atr(m_ohlc, m_period);
 		std::vector<double>& atr_line = atr.line;
 		std::vector<double>& close    = m_ohlc->close;
 		std::vector<double>& high     = m_ohlc->high;

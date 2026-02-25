@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
+#include <mutex>
 #include <unordered_map>
 #include "Cerebro.h"
 #include "Analyzers.h"
@@ -18,6 +19,17 @@ enum RetVal
 {
     Ado, All, Return,Cash, TradeCount , Sharpe
 };
+
+std::string paramStr(std::vector<int>& params);
+
+template <class T>
+double run(std::vector<int> params, OHLC* data, bool optimize, bool showAnalysis, bool showPlot, RetVal retval);
+
+template <class T>
+std::vector<int> optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range, bool singleStep);
+
+template <class T>
+std::vector<int> OptRunData(OHLC* data, std::vector<int> oldparams, int scan_range, bool singleStep, RetVal retval);
 
 static std::string trim(const std::string& s)
 {
