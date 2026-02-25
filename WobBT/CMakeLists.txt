@@ -15,11 +15,16 @@ add_executable(WobBT
 target_include_directories(WobBT PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/Dependencies
-    ${CMAKE_CURRENT_SOURCE_DIR}/Dependencies/python/include
 )
 
 if(UNIX AND NOT APPLE)
     find_package(CURL REQUIRED)
     find_package(OpenSSL REQUIRED)
-    target_link_libraries(WobBT PRIVATE CURL::libcurl OpenSSL::SSL OpenSSL::Crypto pthread)
+    find_package(Python3 REQUIRED COMPONENTS Development)
+    target_include_directories(WobBT PRIVATE ${Python3_INCLUDE_DIRS})
+    target_link_libraries(WobBT PRIVATE CURL::libcurl OpenSSL::SSL OpenSSL::Crypto Python3::Python pthread)
+else()
+    target_include_directories(WobBT PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/Dependencies/python/include
+    )
 endif()

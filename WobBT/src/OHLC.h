@@ -45,8 +45,8 @@ public:
     ~OHLC();
 
     static OHLC CSV2OHLC(std::string filepath, std::string tradeCoin, std::string stableCoin, CANDLE_TYPE candleType, std::string backtestDate, bool reget);
-    static std::string OHLC::getDataFilePath(std::string tradeCoin, std::string stableCoin, OHLC::CANDLE_TYPE candleType, std::string backtestDate);
-    static OHLC OHLC::getData(std::string tradeCoin, std::string stableCoin, OHLC::CANDLE_TYPE type, std::string backtestDate,bool reget);
+    static std::string getDataFilePath(std::string tradeCoin, std::string stableCoin, OHLC::CANDLE_TYPE candleType, std::string backtestDate);
+    static OHLC getData(std::string tradeCoin, std::string stableCoin, OHLC::CANDLE_TYPE type, std::string backtestDate,bool reget);
     static int candlesPerDay(CANDLE_TYPE type);
     OHLC slice(size_t start, size_t end) const;
 

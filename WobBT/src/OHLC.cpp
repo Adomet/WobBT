@@ -31,7 +31,7 @@ OHLC  OHLC::CSV2OHLC(std::string filepath, std::string tradeCoin, std::string st
     std::ifstream inputfile;
 
     std::string msg = "Fetching data of:" + filepath;
-    printf(msg.c_str());
+    printf("%s", msg.c_str());
 
     inputfile.open(filepath);
     std::string line = "";
@@ -68,7 +68,7 @@ OHLC  OHLC::CSV2OHLC(std::string filepath, std::string tradeCoin, std::string st
     size_t candleCount = close.size();
     std::string msg2 = "Candle count:" + std::to_string(candleCount);
     printf("\n");
-    printf(msg2.c_str());
+    printf("%s", msg2.c_str());
     printf("\n");
     printf("------------------------------------------------------------------------------------------");
     printf("\n");
@@ -86,6 +86,7 @@ OHLC  OHLC::CSV2OHLC(std::string filepath, std::string tradeCoin, std::string st
 #endif
         pyCall += backtestDate + " " + tradeCoin;
         int retCode = system(pyCall.c_str());
+        (void)retCode;
 
         return CSV2OHLC(filepath,tradeCoin,stableCoin, candleType,backtestDate,false);
     }
