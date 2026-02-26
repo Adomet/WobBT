@@ -8,7 +8,13 @@ Install dependencies (Ubuntu/Debian):
 
 ```bash
 sudo apt update
-sudo
+sudo apt install -y build-essential cmake libcurl4-openssl-dev libssl-dev zlib1g-dev python3-dev
+```
+
+For **static linking** (libcurl, libssl, libcrypto embedded in executable):
+
+```bash
+sudo apt install -y libcurl4-openssl-dev libssl-dev zlib1g-dev  # static .a libs
 ```
 
 Build:
@@ -16,6 +22,13 @@ Build:
 ```bash
 cd WobBT
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+```
+
+Build with **static linking** (standalone executable, fewer .so dependencies):
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON
 cmake --build build -j
 ```
 
