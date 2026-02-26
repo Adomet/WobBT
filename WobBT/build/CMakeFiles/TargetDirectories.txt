@@ -1,3 +1,0 @@
-/home/ado/WobBT/WobBT/build/CMakeFiles/WobBT.dir
-/home/ado/WobBT/WobBT/build/CMakeFiles/edit_cache.dir
-/home/ado/WobBT/WobBT/build/CMakeFiles/rebuild_cache.dir
