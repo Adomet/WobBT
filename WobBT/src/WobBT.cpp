@@ -26,7 +26,7 @@ template <class T>
 double run(std::vector<int> params, OHLC* data, bool optimize, bool showAnalysis, bool showPlot, RetVal retval);
 
 template <class T>
-std::vector<int> optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range, bool singleStep);
+std::vector<int> optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range = 16, bool singleStep = false);
 
 template <class T>
 std::vector<int> OptRunData(OHLC* data, std::vector<int> oldparams, int scan_range, bool singleStep, RetVal retval);
@@ -264,7 +264,7 @@ void rundataAsync(std::vector<int> params, OHLC* data, int i, std::vector<Cerebr
 }
 
 template <class T>
-std::vector<int>  optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range = 16, bool singleStep = false)
+std::vector<int>  optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range, bool singleStep)
 {
     std::vector<int> newparams = OptRunData<T>(data, oldparams, scan_range, singleStep, retval);
     if (newparams == oldparams)
