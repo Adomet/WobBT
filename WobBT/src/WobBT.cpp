@@ -103,6 +103,8 @@ static double computeScore(const CerebroResult& r, RetVal retval)
     double winRate = r.getResult<WinRate>();
     double sharpe = r.getResult<SharpeRatio>();
     double profitFactor = r.getResult<ProfitFactor>();
+    double WinStreak = r.getResult<WinStreaks>();
+    double LoseStreak = r.getResult<LoseStreaks>();
     double res = 0;
     switch (retval)
     {
@@ -110,7 +112,7 @@ static double computeScore(const CerebroResult& r, RetVal retval)
         res = (std::sqrt(growth)  * sqn * sharpe) / ((avgDD * std::sqrt(maxDD) ) + 1.0);
         break;
     case All:
-        res = std::sqrt(growth)* profitFactor * expectancy * sharpe * sqn / ((avgDD * maxDD) + 1.0);
+        res = std::sqrt(growth) * WinStreak * profitFactor * expectancy * sharpe * sqn / ((avgDD * LoseStreak * maxDD) + 1.0);
         break;
     case Return:
         res = growth / ((avgDD * maxDD) + 1.0);
@@ -262,7 +264,7 @@ void rundataAsync(std::vector<int> params, OHLC* data, int i, std::vector<Cerebr
 }
 
 template <class T>
-std::vector<int>  optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range, bool singleStep)
+std::vector<int>  optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range = 16, bool singleStep = false)
 {
     std::vector<int> newparams = OptRunData<T>(data, oldparams, scan_range, singleStep, retval);
     if (newparams == oldparams)
@@ -404,20 +406,20 @@ int runWobBT(int argc, char** argv)
     //2020-09-01
     //2022-06-11
 
-    //OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2020-09-01", false);
+    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2020-09-01", false);
     //Timer timer("All");
     
-    //run<MyStratV1>({ 255, 993, 149, 23, 408, 731, 1383, 16, 566, 337, 125, 144, 180, 789, 524, 242, 164, 69, 38, 68 }, &data, false, true, true, All);
-    //run<MyStratV1>({ 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, &data, false, true, true, All);
-    //run<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 }, &data, true, true, true, All);
-    //run<MyStratV1>({ 263,930,150,24,294,765,1382,20,570,330,126,139,204,1135,533,220,131,77,36,69 }, &data, true, true, true, Cash);
+    //run<MyStratV1>({ 255, 993, 149, 23, 408, 731, 1383, 16, 566, 337, 125, 144, 180, 789, 524, 242, 164, 69, 38, 68 }, &data, false, true, false, All);
+    //run<MyStratV1>({ 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, &data, false, true, false, All);
+    //run<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 }, &data, false, true, false, All);
+    //run<MyStratV1>({ 263,930,150,24,294,765,1382,20,570,330,126,139,204,1135,533,220,131,77,36,69 }, &data, false, true, false, All);
 
     //trainTest<MyStratV1>(1000, 360, &data, { 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, All);
     //walkForward<MyStratV1>(720, 360, &data, { 260, 960, 149, 23, 313, 731, 1382, 16, 568, 341, 125, 148, 165, 786, 524, 204, 169, 35, 38, 69 }, Ado);
     // 
     // 
 
-    runLive<MyStratV1>({ 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 });
+    runLive<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 });
 
     
     return 0;
