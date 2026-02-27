@@ -114,8 +114,6 @@ public:
         if (m_init_all_ind_periods > candleIndex)
             return;
 
-        Orderer(candleIndex, hardSTPDefault, "SELL SELL SELL");
-        return;
 
         const double close = m_Data->close[candleIndex];
         const bool inPos = getBuyPrice() > 0;
