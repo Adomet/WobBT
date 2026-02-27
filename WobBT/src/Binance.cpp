@@ -148,6 +148,7 @@ bool BinanceBroker::fetchLatestKlines()
     size_t off = 0;
     if (!parseKline(buf, len, off, o, h, l, c, v, &klineTime))
         return false;
+
     if (klineTime > m_lastKlineTime && (o != 0 || c != 0))
     {
         m_lastKlineTime = klineTime;
@@ -159,7 +160,28 @@ bool BinanceBroker::fetchLatestKlines()
     return false;
 }
 
-void BinanceBroker::executeOrder(bool isBuy, double price, double quantity)
+void BinanceBroker::refreshState()
+{
+    fetchWalletBalances(m_cachedState.coin, m_cachedState.cash);
+}
+
+BrokerState BinanceBroker::getState()
+{
+    return m_cachedState;
+}
+
+void BinanceBroker::logLiveCandles(const BrokerState& state) const
+{
+    std::ostringstream log;
+    log << std::fixed << std::setprecision(2);
+    log << formatCandleTime(m_lastProcessedOpenTime) << " - " << m_config.symbol
+        << " | Coin " << state.coin
+        << " | Cash " << state.cash
+        << " | C: " << m_lastProcessedClose;
+    Debug::Log(log.str());
+}
+
+void BinanceBroker::executeOrder(bool isBuy, double price)
 {
     if (m_config.apiKey.empty() || m_config.apiSecret.empty())
     {
@@ -167,15 +189,24 @@ void BinanceBroker::executeOrder(bool isBuy, double price, double quantity)
         return;
     }
 
+    if (isBuy)
+        m_cachedState.lastBuyPrice = price;
+    else
+        m_cachedState.lastBuyPrice = -1;
+
     std::string side = isBuy ? "BUY" : "SELL";
     std::string type = "MARKET";
 
+    double buyCash = m_cachedState.cash * 0.999;
+    double SellCoin = floor(m_cachedState.coin / 0.01) * 0.01;
+
     std::ostringstream qs;
+    qs << std::fixed << std::setprecision(2);
     qs << "symbol=" << m_config.symbol << "&side=" << side << "&type=" << type;
     if (isBuy)
-        qs << "&quoteOrderQty=" << (quantity * price);
+        qs << "&quoteOrderQty=" << buyCash;
     else
-        qs << "&quantity=" << quantity;
+        qs << "&quantity=" << SellCoin;
 
     qs << "&timestamp=" << (std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count());
@@ -188,7 +219,7 @@ void BinanceBroker::executeOrder(bool isBuy, double price, double quantity)
     std::string resp = httpPost(url, queryString);
 
     if (!resp.empty())
-        Debug::Log("Order " + side + " @ " + std::to_string(price) + " qty " + std::to_string(quantity) + " -> " + resp.substr(0, 200));
+        Debug::Log("Order " + side + " @ " + std::to_string(price) + " -> " + resp.substr(0, 200));
     else
         Debug::Log("Order " + side + " request failed");
 }
@@ -210,12 +241,14 @@ void BinanceBroker::runLive(Cerebro& cerebro)
     }
 
     strat->m_Data = &m_ohlc;
-    strat->m_liveBroker = this;
     strat->m_warmupMode = false;
+    strat->m_broker = this;
     strat->init();
 
     const int pollIntervalSec = std::max(1, m_config.pollIntervalSec);
     Debug::Log("Live trading started. Polling every " + std::to_string(pollIntervalSec) + "s");
+    refreshState();
+    logLiveCandles(getState());
 
     while (m_running)
     {
@@ -224,27 +257,12 @@ void BinanceBroker::runLive(Cerebro& cerebro)
             size_t lastIdx = m_ohlc.close.size() - 1;
             if (lastIdx >= 1)
             {
+                refreshState();
                 strat->deleteElements();
                 strat->init();
                 strat->m_isOrdered = false;
                 strat->next((int)lastIdx);
-
-                double coin = strat->m_buysize;
-                double cash = strat->m_Cash;
-                if (!fetchWalletBalances(coin, cash))
-                {
-                    // Fallback to strategy state if wallet request fails or keys are missing.
-                    coin = strat->m_buysize;
-                    cash = strat->m_Cash;
-                }
-
-                std::ostringstream log;
-                log << std::fixed << std::setprecision(2);
-                log << formatCandleTime(m_lastProcessedOpenTime) << " - " << m_config.symbol
-                    << " | Coin " << coin
-                    << " | Cash " << cash
-                    << " | C: " << m_lastProcessedClose;
-                Debug::Log(log.str());
+                logLiveCandles(getState());
             }
         }
 
@@ -321,24 +339,40 @@ std::string BinanceBroker::httpGet(const std::string& url, const std::string& ex
 bool BinanceBroker::fetchWalletBalances(double& coin, double& cash) const
 {
     if (m_config.apiKey.empty() || m_config.apiSecret.empty())
+    {
+        Debug::Log("fetchWalletBalances: missing API key/secret");
         return false;
+    }
 
     const auto assets = splitSymbolAssets();
     if (assets.first.empty() || assets.second.empty())
+    {
+        Debug::Log("fetchWalletBalances: could not split symbol assets from " + m_config.symbol);
         return false;
+    }
 
     const long long ts = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
     std::string queryString = "timestamp=" + std::to_string(ts);
     std::string signature = signRequest(queryString);
     if (signature.empty())
+    {
+        Debug::Log("fetchWalletBalances: request signature generation failed");
         return false;
+    }
 
     std::string url = "https://api.binance.com/api/v3/account?" + queryString + "&signature=" + signature;
     std::string headers = "X-MBX-APIKEY: " + m_config.apiKey + "\r\n";
     std::string resp = httpGet(url, headers);
     if (resp.empty())
+    {
+        Debug::Log("fetchWalletBalances: /api/v3/account returned empty response");
         return false;
+    }
+    if (resp.find("\"code\"") != std::string::npos || resp.find("\"msg\"") != std::string::npos)
+    {
+        Debug::Log("fetchWalletBalances: Binance error payload -> " + resp.substr(0, 300));
+    }
 
     auto extractFree = [&](const std::string& asset) -> double {
         std::string marker = "\"asset\":\"" + asset + "\"";
@@ -358,10 +392,15 @@ bool BinanceBroker::fetchWalletBalances(double& coin, double& cash) const
     const double coinVal = extractFree(assets.first);
     const double cashVal = extractFree(assets.second);
     if (coinVal < 0.0 || cashVal < 0.0)
+    {
+        Debug::Log("fetchWalletBalances: failed to parse balances for assets " + assets.first + "/" + assets.second);
         return false;
+    }
 
     coin = coinVal;
     cash = cashVal;
+    Debug::Log("fetchWalletBalances: success | " + assets.first + "=" + std::to_string(coin)
+        + " | " + assets.second + "=" + std::to_string(cash));
     return true;
 }
 
@@ -630,24 +669,40 @@ std::string BinanceBroker::httpGet(const std::string& url, const std::string& ex
 bool BinanceBroker::fetchWalletBalances(double& coin, double& cash) const
 {
     if (m_config.apiKey.empty() || m_config.apiSecret.empty())
+    {
+        Debug::Log("fetchWalletBalances: missing API key/secret");
         return false;
+    }
 
     const auto assets = splitSymbolAssets();
     if (assets.first.empty() || assets.second.empty())
+    {
+        Debug::Log("fetchWalletBalances: could not split symbol assets from " + m_config.symbol);
         return false;
+    }
 
     const long long ts = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
     std::string queryString = "timestamp=" + std::to_string(ts);
     std::string signature = signRequest(queryString);
     if (signature.empty())
+    {
+        Debug::Log("fetchWalletBalances: request signature generation failed");
         return false;
+    }
 
     std::string url = "https://api.binance.com/api/v3/account?" + queryString + "&signature=" + signature;
     std::string headers = "X-MBX-APIKEY: " + m_config.apiKey + "\r\n";
     std::string resp = httpGet(url, headers);
     if (resp.empty())
+    {
+        Debug::Log("fetchWalletBalances: /api/v3/account returned empty response");
         return false;
+    }
+    if (resp.find("\"code\"") != std::string::npos || resp.find("\"msg\"") != std::string::npos)
+    {
+        Debug::Log("fetchWalletBalances: Binance error payload -> " + resp.substr(0, 300));
+    }
 
     auto extractFree = [&](const std::string& asset) -> double {
         std::string marker = "\"asset\":\"" + asset + "\"";
@@ -667,10 +722,15 @@ bool BinanceBroker::fetchWalletBalances(double& coin, double& cash) const
     const double coinVal = extractFree(assets.first);
     const double cashVal = extractFree(assets.second);
     if (coinVal < 0.0 || cashVal < 0.0)
+    {
+        Debug::Log("fetchWalletBalances: failed to parse balances for assets " + assets.first + "/" + assets.second);
         return false;
+    }
 
     coin = coinVal;
     cash = cashVal;
+    Debug::Log("fetchWalletBalances: success | " + assets.first + "=" + std::to_string(coin)
+        + " | " + assets.second + "=" + std::to_string(cash));
     return true;
 }
 

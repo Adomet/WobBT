@@ -20,16 +20,19 @@ namespace plt = matplotlibcpp;
 class Strategy
 {
 public:
-	Strategy(OHLC* data,std::vector<int> params):m_Data(data),m_params(params) {};
-	Strategy(double startCash, double commissions):m_Cash(startCash),m_commissions(commissions){};
+	Strategy(OHLC* data, std::vector<int> params) : m_Data(data), m_params(params) {};
 	~Strategy(){};
 
 	virtual void init(){};
 	virtual void next(int candleIndex) {};
 
+	double getCash() const { return m_broker->getState().cash; }
+	double getCoin() const { return m_broker->getState().coin; }
+	double getBuyPrice() const { return m_broker->getState().lastBuyPrice; }
+
 	double getEQ(double close)
 	{
-		return m_Cash + (m_buysize * close);
+		return getCash() + (getCoin() * close);
 	}
 
 	void Plot(std::vector<double>* equityCurve, bool plotIndicators = true)
@@ -296,42 +299,42 @@ public:
 			return;
 
 		double close = m_Data->close[candleIndex];
+		double buyedPrice = getBuyPrice();
+		Debug::Log(reason + ": " + std::to_string(close));
+
 		if (isbuy)
 		{
-			if (m_buyprice == -1)
+			if (buyedPrice <= 0)
 			{
+				if (getCash() <= 0)
+					return;
+
 				m_isOrdered = true;
-				m_buyprice  = close;
-				m_buysize   = m_Cash / m_buyprice;
-				m_buysize  -= m_buysize * m_commissions;
-				m_Cash      = 0;
-
 				m_buySignals.push_back({ candleIndex, close });
-
-				if (m_liveBroker)
-					m_liveBroker->executeOrder(true, close, m_buysize);
+				m_broker->executeOrder(true, close);
 			}
 		}
 		else
 		{
-			if (m_buyprice != -1)
+			if (buyedPrice > 0)
 			{
+				double coin = getCoin();
+				if (coin <= 0)
+					return;
+
 				m_isOrdered = true;
+				m_broker->executeOrder(false, close);
 
-				if (m_liveBroker)
-					m_liveBroker->executeOrder(false, close, m_buysize);
+				double costBasis = buyedPrice * coin;
+				double proceeds = close * coin * (1.0 - m_broker->getCommissions());
+				double pnl = proceeds - costBasis;
+				double pnlPct = (costBasis > 0) ? (100.0 * pnl / costBasis) : 0.0;
 
-				m_Cash = close * m_buysize;
-				m_Cash -= m_Cash * m_commissions;
-				double pnl = (m_Cash) - (m_buyprice * m_buysize);
 				m_PNL.push_back(pnl);
-				double costBasis = m_buyprice * m_buysize;
-				double pnlPct = (costBasis != 0) ? (100.0 * pnl / costBasis) : 0.0;
 				m_trades.push_back({ candleIndex, pnlPct });
-
 				m_sellSignals.push_back({ candleIndex, close });
 
-				if (m_buyprice < close)
+				if (buyedPrice < close)
 				{
 					m_winTradeCount++;
 					m_winStreak++;
@@ -347,8 +350,6 @@ public:
 						m_max_loseStreak = m_loseStreak;
 				}
 
-				m_buyprice = -1;
-				m_buysize  =  0;
 				m_tradeCount++;
 			}
 		}
@@ -362,7 +363,7 @@ public:
 			next(i);
 			double eq = getEQ(m_Data->close[i]);
 			m_equityCurve.push_back(eq);
-			m_cashCurve.push_back(m_Cash);
+			m_cashCurve.push_back(getCash());
 		}
 
 		for (size_t i = 0; i < m_Analyzers.size(); i++)
@@ -386,13 +387,7 @@ public:
 	std::vector<std::pair<int, double>> m_sellSignals;  // (candleIndex, price)
 
 public:
-	double m_Cash        = 1000;
-	double m_buyprice    = -1;
-	double m_buysize     =  0;
-	double m_commissions = 0.001;
-
-	// Live trading: broker executes orders; warmup skips Orderer
-	IBroker* m_liveBroker = nullptr;
+	IBroker* m_broker = nullptr;
 	bool     m_warmupMode = false;
 public:
 	int    m_init_all_ind_periods = 0;

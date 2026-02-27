@@ -118,10 +118,10 @@ static double computeScore(const CerebroResult& r, RetVal retval)
         res = growth / ((avgDD * maxDD) + 1.0);
         break;
     case Cash:
-        res = r.getResult<ReturnPNL>();
+        res = std::sqrt(growth);
         break;
     case TradeCount:
-        res = tradeCount * tradeCount* tradeCount* std::sqrt(growth);
+        res = tradeCount * tradeCount * tradeCount * std::sqrt(growth);
         break;
     case Sharpe:
         res = sharpe;
@@ -331,7 +331,7 @@ std::vector<int>  OptRunData(OHLC* data, std::vector<int> oldparams, int scan_ra
                 best_value = r.score;
                 best_param = r.scan_param;
             }
-            else if (best_value == r.score && best_param > r.scan_param)
+            else if (best_value == r.score && best_param < r.scan_param)
             {
                 best_param = r.scan_param;
             }
@@ -389,7 +389,7 @@ double runLive(std::vector<int> params)
     cfg.symbol = "AVAXUSDT";
     cfg.candleType = OHLC::m15;
     cfg.warmupCandles = 500;
-    cfg.pollIntervalSec = 10;
+    cfg.pollIntervalSec = 1;
 
     BinanceBroker bb(cfg);
     T mystrat(bb.getOHLC(), params);
@@ -409,14 +409,11 @@ int runWobBT(int argc, char** argv)
     OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2020-09-01", false);
     //Timer timer("All");
     
-    //run<MyStratV1>({ 255, 993, 149, 23, 408, 731, 1383, 16, 566, 337, 125, 144, 180, 789, 524, 242, 164, 69, 38, 68 }, &data, false, true, false, All);
-    //run<MyStratV1>({ 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, &data, false, true, false, All);
     //run<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 }, &data, false, true, false, All);
-    //run<MyStratV1>({ 263,930,150,24,294,765,1382,20,570,330,126,139,204,1135,533,220,131,77,36,69 }, &data, false, true, false, All);
 
     //trainTest<MyStratV1>(1000, 360, &data, { 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, All);
     //walkForward<MyStratV1>(720, 360, &data, { 260, 960, 149, 23, 313, 731, 1382, 16, 568, 341, 125, 148, 165, 786, 524, 204, 169, 35, 38, 69 }, Ado);
-    // 
+    // 265,989,149,23,410,775,1525,11,623,314,124,145,166,834,523,263,98,44,44,58
     // 
 
     runLive<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 });

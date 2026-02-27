@@ -16,3 +16,4 @@ bin-int/
 
 # Secrets
 .env
+WobBT/.env

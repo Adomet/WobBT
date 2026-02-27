@@ -143,6 +143,7 @@
   <ItemGroup>
     <ClInclude Include="src\Analyzer.h" />
     <ClInclude Include="src\Binance.h" />
+    <ClInclude Include="src\Broker.h" />
     <ClInclude Include="src\IBroker.h" />
     <ClInclude Include="src\Analyzers.h" />
     <ClInclude Include="src\Cerebro.h" />
@@ -154,6 +155,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Binance.cpp" />
+    <ClCompile Include="src\Broker.cpp" />
     <ClCompile Include="src\Cerebro.cpp" />
     <ClCompile Include="src\OHLC.cpp" />
     <ClCompile Include="src\WobBT.cpp" />

@@ -25,7 +25,9 @@ public:
     explicit BinanceBroker(const BinanceConfig& config);
     ~BinanceBroker();
 
-    void executeOrder(bool isBuy, double price, double quantity) override;
+    void executeOrder(bool isBuy, double price) override;
+    BrokerState getState() override;
+    void refreshState();
 
     // Runs live loop: fetches data, on each new candle runs strategy through Cerebro
     void runLive(Cerebro& cerebro);
@@ -46,9 +48,11 @@ private:
     std::string formatCandleTime(long long openTimeMs) const;
     long long candleIntervalMs() const;
     std::pair<std::string, std::string> splitSymbolAssets() const;
+    void logLiveCandles(const BrokerState& state) const;
 
     BinanceConfig m_config;
     OHLC m_ohlc;
+    BrokerState m_cachedState;
     long long m_lastKlineTime = 0;
     long long m_lastProcessedOpenTime = 0;
     double m_lastProcessedClose = 0.0;

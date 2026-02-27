@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(WobBT
     src/WobBT.cpp
     src/Binance.cpp
+    src/Broker.cpp
     src/Cerebro.cpp
     src/OHLC.cpp
 )

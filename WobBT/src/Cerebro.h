@@ -1,6 +1,8 @@
 #pragma once
 #include "Strategy.h"
+#include "Broker.h"
 #include <map>
+#include <memory>
 #include <string>
 
 // Cerebro is brain of system
@@ -29,11 +31,23 @@ struct CerebroResult
 class Cerebro
 {
 public:
-	Cerebro(Strategy* strat) : m_Strategy(strat) { setStartCash(); setCommissions(); }
+	Cerebro(Strategy* strat) : m_Strategy(strat)
+	{
+		m_broker = std::make_unique<Broker>(1000, 0.001);
+		m_Strategy->m_broker = m_broker.get();
+		setStartCash();
+		setCommissions();
+	}
 	~Cerebro() = default;
 
-	void setStartCash(double startCash = 1000) { m_Strategy->m_Cash = startCash; }
-	void setCommissions(double commission = 0.001) { m_Strategy->m_commissions = commission; }
+	void setStartCash(double startCash = 1000)
+	{
+		m_Strategy->m_broker->setStartCash(startCash);
+	}
+	void setCommissions(double commission = 0.001)
+	{
+		m_Strategy->m_broker->setCommissions(commission);
+	}
 	void addAnalyzer(Analyzer* analyzer) { m_Strategy->m_Analyzers.push_back(analyzer); }
 
 	Strategy* getStrategy() { return m_Strategy; }
@@ -42,4 +56,5 @@ public:
 
 private:
 	Strategy* m_Strategy;
+	std::unique_ptr<Broker> m_broker;
 };

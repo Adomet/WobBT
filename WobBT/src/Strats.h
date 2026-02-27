@@ -114,8 +114,11 @@ public:
         if (m_init_all_ind_periods > candleIndex)
             return;
 
+        Orderer(candleIndex, true, "BUY BUY BUY");
+        return;
+
         const double close = m_Data->close[candleIndex];
-        const bool inPos = m_buyprice != -1;
+        const bool inPos = getBuyPrice() > 0;
 
         const double arLine = ar->line[candleIndex];
         const double ewoLine = ewo->line[candleIndex];
@@ -131,7 +134,8 @@ public:
         const double bear_diff_tema_heigh = bearTema + ((bearTema / bear_tema_div_high) * arLine * 3.7);
         const double bear_diff_tema_low = bearTema - ((bearTema / bear_tema_div_low) * 10.0);
 
-        const bool isStop = inPos && (close <= m_buyprice - (m_buyprice * stop_loss * arLine));
+        const double buyPrice = getBuyPrice();
+        const bool isStop = inPos && (close <= buyPrice - (buyPrice * stop_loss * arLine));
         isbull = (strd < close);
 
         if (isbull)
@@ -140,7 +144,7 @@ public:
             const bool bull_rsiselltrigger = bullRsi >= bull_rsi_high;
             const bool bull_avgdiffselltrigger = close >= bull_diff_tema_heigh;
             const bool bull_avgdiffbuytrigger = close <= bull_diff_tema_low;
-            const bool bull_isTakeProfit = inPos && (close >= m_buyprice + (m_buyprice * bull_takeprofit));
+            const bool bull_isTakeProfit = inPos && (close >= buyPrice + (buyPrice * bull_takeprofit));
             const bool bull_ewo_trigger = ewoLine <= -bull_ewo_offset;
 
             if (bull_avgdiffbuytrigger && (bull_rsibuytrigger || bull_ewo_trigger))
@@ -158,7 +162,7 @@ public:
             const bool bear_rsiselltrigger = bearRsi >= bear_rsi_high;
             const bool bear_avgdiffselltrigger = close >= bear_diff_tema_heigh;
             const bool bear_avgdiffbuytrigger = close <= bear_diff_tema_low;
-            const bool bear_isTakeProfit = inPos && (close >= m_buyprice + (m_buyprice * bear_takeprofit * arLine));
+            const bool bear_isTakeProfit = inPos && (close >= buyPrice + (buyPrice * bear_takeprofit * arLine));
             const bool bear_ewo_trigger = ewoLine <= -bear_ewo_offset;
 
             if (bear_avgdiffbuytrigger && bear_rsibuytrigger && bear_ewo_trigger)
@@ -177,13 +181,13 @@ public:
             Orderer(candleIndex, true, "CANDLE_TRIG BUY");
         }
 
-        if (m_buyprice != -1)
+        if (getBuyPrice() > 0)
             posCandleCount += 1;
         else
             posCandleCount = 0;
 
-        const bool TimeProfitRatioSTP = inPos && !isbull && ((close - m_buyprice) / m_buyprice >= (bull_takeprofit - (timeProfitRetioDropRate * posCandleCount)));
-        const bool hardSTP = inPos && (close <= m_buyprice - (m_buyprice * hardSTPDefault));
+        const bool TimeProfitRatioSTP = inPos && !isbull && ((close - buyPrice) / buyPrice >= (bull_takeprofit - (timeProfitRetioDropRate * posCandleCount)));
+        const bool hardSTP = inPos && (close <= buyPrice - (buyPrice * hardSTPDefault));
 
         if (TimeProfitRatioSTP)
             Orderer(candleIndex, false, "Time_Profit SELL");
