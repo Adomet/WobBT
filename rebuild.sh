@@ -6,7 +6,7 @@ PROJECT_DIR="./WobBT/WobBT"
 echo "=== REBUILD STARTED ==="
 
 # 1️⃣ Running process varsa kapat
-PID=$(pgrep -f "$PROJECT_DIR/build/$APP_NAME")
+PID=$(pgrep -f "./build/$APP_NAME")
 
 if [ ! -z "$PID" ]; then
     echo "Running $APP_NAME found. PID: $PID"
