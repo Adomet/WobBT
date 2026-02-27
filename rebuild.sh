@@ -44,6 +44,6 @@ cmake --build build || { echo "Build failed!"; exit 1; }
 
 # 7️⃣ Start
 echo "Starting application..."
-nohup ./build/$APP_NAME > output.log 2>&1 &
+nohup ./build/$APP_NAME &
 
 echo "=== REBUILD COMPLETE ==="
