@@ -403,10 +403,13 @@ double runLive(std::vector<int> params)
 int runWobBT(int argc, char** argv)
 {
     printHeader();
+    runLive<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 });
+    return 0;
+
     //2020-09-01
     //2022-06-11
 
-    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2020-09-01", false);
+    //OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2020-09-01", false);
     //Timer timer("All");
     
     //run<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 }, &data, false, true, false, All);
@@ -416,7 +419,6 @@ int runWobBT(int argc, char** argv)
     // 265,989,149,23,410,775,1525,11,623,314,124,145,166,834,523,263,98,44,44,58
     // 
 
-    runLive<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 });
 
     
     return 0;
