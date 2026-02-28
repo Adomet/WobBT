@@ -738,8 +738,6 @@ bool BinanceBroker::fetchWalletBalances(double& coin, double& cash) const
 
     coin = coinVal;
     cash = cashVal;
-    Debug::Log("fetchWalletBalances: success | " + assets.first + "=" + std::to_string(coin)
-        + " | " + assets.second + "=" + std::to_string(cash));
     return true;
 }
 
