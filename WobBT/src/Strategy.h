@@ -300,7 +300,7 @@ public:
 
 		double close = m_Data->close[candleIndex];
 		double buyedPrice = getBuyPrice();
-		Debug::Log(reason + ": " + std::to_string(close));
+		//Debug::Log(reason + ": " + std::to_string(close));
 
 		if (isbuy)
 		{
@@ -316,16 +316,15 @@ public:
 		}
 		else
 		{
-			if (buyedPrice > 0)
+			double coin = getCoin();
+			if (coin > 0)
 			{
-				double coin = getCoin();
-				if (coin <= 0)
-					return;
+				double entryPrice = buyedPrice > 0 ? buyedPrice : close;
 
 				m_isOrdered = true;
 				m_broker->executeOrder(false, close);
 
-				double costBasis = buyedPrice * coin;
+				double costBasis = entryPrice * coin;
 				double proceeds = close * coin * (1.0 - m_broker->getCommissions());
 				double pnl = proceeds - costBasis;
 				double pnlPct = (costBasis > 0) ? (100.0 * pnl / costBasis) : 0.0;
@@ -334,7 +333,7 @@ public:
 				m_trades.push_back({ candleIndex, pnlPct });
 				m_sellSignals.push_back({ candleIndex, close });
 
-				if (buyedPrice < close)
+				if (entryPrice < close)
 				{
 					m_winTradeCount++;
 					m_winStreak++;

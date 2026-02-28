@@ -116,7 +116,7 @@ public:
 
 
         const double close = m_Data->close[candleIndex];
-        const bool inPos = getBuyPrice() > 0;
+        const bool inPos = (getCoin() > 0) || (getBuyPrice() > 0);
 
         const double arLine = ar->line[candleIndex];
         const double ewoLine = ewo->line[candleIndex];
@@ -179,7 +179,7 @@ public:
             Orderer(candleIndex, true, "CANDLE_TRIG BUY");
         }
 
-        if (getBuyPrice() > 0)
+        if (inPos)
             posCandleCount += 1;
         else
             posCandleCount = 0;

@@ -26,7 +26,7 @@ template <class T>
 double run(std::vector<int> params, OHLC* data, bool optimize, bool showAnalysis, bool showPlot, RetVal retval);
 
 template <class T>
-std::vector<int> optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range = 16, bool singleStep = false);
+std::vector<int> optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range = 4, bool singleStep = false);
 
 template <class T>
 std::vector<int> OptRunData(OHLC* data, std::vector<int> oldparams, int scan_range, bool singleStep, RetVal retval);
@@ -100,6 +100,8 @@ static double computeScore(const CerebroResult& r, RetVal retval)
     double sqn = r.getResult<SQN>();
     double expectancy = r.getResult<Expectancy>();
     double tradeCount = r.getResult<TotalClosed>();
+    double wonCount = r.getResult<TotalWon>();
+    double lostCount = r.getResult<TotalLost>();
     double winRate = r.getResult<WinRate>();
     double sharpe = r.getResult<SharpeRatio>();
     double profitFactor = r.getResult<ProfitFactor>();
@@ -109,10 +111,10 @@ static double computeScore(const CerebroResult& r, RetVal retval)
     switch (retval)
     {
     case Ado:
-        res = (std::sqrt(growth)  * sqn * sharpe) / ((avgDD * std::sqrt(maxDD) ) + 1.0);
+        res = (std::sqrt(growth)  * sharpe * wonCount) / ((avgDD * maxDD) + 1.0);
         break;
     case All:
-        res = std::sqrt(growth) * WinStreak * profitFactor * expectancy * sharpe * sqn / ((avgDD * LoseStreak * maxDD) + 1.0);
+        res = std::sqrt(growth) * WinStreak * tradeCount * wonCount * profitFactor * expectancy * sharpe * sqn / ((10000000000000 * lostCount * avgDD * avgDD * LoseStreak * maxDD) + 1.0);
         break;
     case Return:
         res = growth / ((avgDD * maxDD) + 1.0);
@@ -121,10 +123,11 @@ static double computeScore(const CerebroResult& r, RetVal retval)
         res = std::sqrt(growth);
         break;
     case TradeCount:
-        res = tradeCount * tradeCount * tradeCount * std::sqrt(growth);
+        res = tradeCount * wonCount * std::sqrt(growth);
+        break;
         break;
     case Sharpe:
-        res = sharpe;
+        res = sharpe / ((avgDD * maxDD) + 1.0);
     default:
         break;
     }
@@ -403,7 +406,7 @@ double runLive(std::vector<int> params)
 int runWobBT(int argc, char** argv)
 {
     printHeader();
-    runLive<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 });
+    runLive<MyStratV1>({ 265,944,149,23,449,775,1576,11,623,311,124,145,166,769,537,288,55,47,44,58 });
     return 0;
 
     //2020-09-01
@@ -412,8 +415,9 @@ int runWobBT(int argc, char** argv)
     //OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2020-09-01", false);
     //Timer timer("All");
     
-    //run<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 }, &data, false, true, false, All);
-
+    //run<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 }, &data, false, true, false, TradeCount);
+    //run<MyStratV1>({ 265,944,149,23,449,775,1576,11,623,311,124,145,166,769,537,288,55,47,44,58 }, &data, true, true, false, TradeCount);
+    
     //trainTest<MyStratV1>(1000, 360, &data, { 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, All);
     //walkForward<MyStratV1>(720, 360, &data, { 260, 960, 149, 23, 313, 731, 1382, 16, 568, 341, 125, 148, 165, 786, 524, 204, 169, 35, 38, 69 }, Ado);
     // 265,989,149,23,410,775,1525,11,623,314,124,145,166,834,523,263,98,44,44,58

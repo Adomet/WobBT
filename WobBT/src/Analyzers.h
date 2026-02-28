@@ -417,7 +417,17 @@ public:
 			m_Result = 0;
 			return m_Result;
 		}
-		m_Result = mean / std;
+		const double baseSharpe = mean / std;
+		const size_t usedCandles = (m_strat.m_Data && m_strat.m_Data->close.size() > 1)
+			? (m_strat.m_Data->close.size() - 1)
+			: 0;
+		const int candlesPerDay = OHLC::candlesPerDay(m_strat.m_Data ? m_strat.m_Data->m_CandleType : OHLC::m15);
+		const double yearsCovered = (candlesPerDay > 0)
+			? (static_cast<double>(usedCandles) / (static_cast<double>(candlesPerDay) * 365.0))
+			: 0.0;
+
+		// User-requested scaling: multiply Sharpe by tested year span.
+		m_Result = baseSharpe * yearsCovered;
 		return m_Result;
 	}
 public:

@@ -163,6 +163,22 @@ bool BinanceBroker::fetchLatestKlines()
 void BinanceBroker::refreshState()
 {
     fetchWalletBalances(m_cachedState.coin, m_cachedState.cash);
+    if (m_cachedState.coin > 0.0)
+    {
+        // If wallet already holds coin at startup, initialize position anchor price.
+        if (m_cachedState.lastBuyPrice <= 0.0)
+        {
+            double fallbackPrice = m_lastProcessedClose;
+            if (fallbackPrice <= 0.0 && !m_ohlc.close.empty())
+                fallbackPrice = m_ohlc.close.back();
+            if (fallbackPrice > 0.0)
+                m_cachedState.lastBuyPrice = fallbackPrice;
+        }
+    }
+    else
+    {
+        m_cachedState.lastBuyPrice = -1;
+    }
 }
 
 BrokerState BinanceBroker::getState()
@@ -394,8 +410,6 @@ bool BinanceBroker::fetchWalletBalances(double& coin, double& cash) const
 
     coin = coinVal;
     cash = cashVal;
-    Debug::Log("fetchWalletBalances: success | " + assets.first + "=" + std::to_string(coin)
-        + " | " + assets.second + "=" + std::to_string(cash));
     return true;
 }
 
