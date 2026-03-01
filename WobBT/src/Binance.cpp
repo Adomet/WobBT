@@ -46,6 +46,7 @@ void BinanceBroker::appendCandle(double o, double h, double l, double c, double 
     m_ohlc.low.push_back(l);
     m_ohlc.close.push_back(c);
     m_ohlc.volume.push_back(v);
+    trimOhlcToMonthlyWindow();
 }
 
 void BinanceBroker::removeLastCandle()
@@ -429,6 +430,30 @@ long long BinanceBroker::candleIntervalMs() const
     case OHLC::w1:  return 7LL * 24LL * 60LL * 60LL * 1000LL;
     default:        return 15LL * 60LL * 1000LL;
     }
+}
+
+size_t BinanceBroker::maxCandlesInMemory() const
+{
+    // Keep roughly one month (30 days) of candles in memory.
+    const long long intervalMs = std::max(1LL, candleIntervalMs());
+    const long long monthMs = 30LL * 24LL * 60LL * 60LL * 1000LL;
+    const long long candleCount = monthMs / intervalMs;
+    return (size_t)std::max(1LL, candleCount);
+}
+
+void BinanceBroker::trimOhlcToMonthlyWindow()
+{
+    const size_t maxCandles = maxCandlesInMemory();
+    const size_t current = m_ohlc.close.size();
+    if (current <= maxCandles)
+        return;
+
+    const size_t overflow = current - maxCandles;
+    m_ohlc.open.erase(m_ohlc.open.begin(), m_ohlc.open.begin() + overflow);
+    m_ohlc.high.erase(m_ohlc.high.begin(), m_ohlc.high.begin() + overflow);
+    m_ohlc.low.erase(m_ohlc.low.begin(), m_ohlc.low.begin() + overflow);
+    m_ohlc.close.erase(m_ohlc.close.begin(), m_ohlc.close.begin() + overflow);
+    m_ohlc.volume.erase(m_ohlc.volume.begin(), m_ohlc.volume.begin() + overflow);
 }
 
 std::string BinanceBroker::formatCandleTime(long long openTimeMs) const

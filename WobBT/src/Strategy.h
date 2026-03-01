@@ -300,7 +300,7 @@ public:
 
 		double close = m_Data->close[candleIndex];
 		double buyedPrice = getBuyPrice();
-		//Debug::Log(reason + ": " + std::to_string(close));
+		Debug::Log(reason + ": " + std::to_string(close));
 
 		if (isbuy)
 		{

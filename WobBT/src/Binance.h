@@ -38,6 +38,7 @@ private:
     void fetchInitialKlines();
     bool fetchLatestKlines();
     void appendCandle(double o, double h, double l, double c, double v);
+    void trimOhlcToMonthlyWindow();
     void removeLastCandle();
     std::string httpGet(const std::string& url) const;
     std::string httpGet(const std::string& url, const std::string& extraHeaders) const;
@@ -47,6 +48,7 @@ private:
     bool fetchWalletBalances(double& coin, double& cash) const;
     std::string formatCandleTime(long long openTimeMs) const;
     long long candleIntervalMs() const;
+    size_t maxCandlesInMemory() const;
     std::pair<std::string, std::string> splitSymbolAssets() const;
     void logLiveCandles(const BrokerState& state) const;
 

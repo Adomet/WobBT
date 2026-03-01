@@ -26,7 +26,7 @@ template <class T>
 double run(std::vector<int> params, OHLC* data, bool optimize, bool showAnalysis, bool showPlot, RetVal retval);
 
 template <class T>
-std::vector<int> optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range = 4, bool singleStep = false);
+std::vector<int> optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range = 8, bool singleStep = false);
 
 template <class T>
 std::vector<int> OptRunData(OHLC* data, std::vector<int> oldparams, int scan_range, bool singleStep, RetVal retval);
@@ -114,7 +114,7 @@ static double computeScore(const CerebroResult& r, RetVal retval)
         res = (std::sqrt(growth)  * sharpe * wonCount) / ((avgDD * maxDD) + 1.0);
         break;
     case All:
-        res = std::sqrt(growth) * WinStreak * tradeCount * wonCount * profitFactor * expectancy * sharpe * sqn / ((10000000000000 * lostCount * avgDD * avgDD * LoseStreak * maxDD) + 1.0);
+        res = pow(tradeCount * wonCount,3) * std::sqrt(growth) * WinStreak * profitFactor * expectancy * sharpe * sqn / ((1000000000 * lostCount * avgDD * avgDD * LoseStreak * maxDD) + 1.0);
         break;
     case Return:
         res = growth / ((avgDD * maxDD) + 1.0);
@@ -334,7 +334,7 @@ std::vector<int>  OptRunData(OHLC* data, std::vector<int> oldparams, int scan_ra
                 best_value = r.score;
                 best_param = r.scan_param;
             }
-            else if (best_value == r.score && best_param < r.scan_param)
+            else if (best_value == r.score && best_param > r.scan_param)
             {
                 best_param = r.scan_param;
             }
@@ -414,9 +414,16 @@ int runWobBT(int argc, char** argv)
 
     //OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2020-09-01", false);
     //Timer timer("All");
-    
-    //run<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 }, &data, false, true, false, TradeCount);
-    //run<MyStratV1>({ 265,944,149,23,449,775,1576,11,623,311,124,145,166,769,537,288,55,47,44,58 }, &data, true, true, false, TradeCount);
+    // 
+    // 
+    //run<MyStratV1>({ 265,944,149,23,449,775,1576,11,623,311,124,145,166,769,537,288,55,47,44,58 }, &data, false, true, false, All);
+    //run<MyStratV1>({ 265,945,150,23,450,760,1660,11,624,308,124,172,166,769,539,315,71,59,47,59 }, &data, false, true, false, All);
+    //run<MyStratV1>({ 265,989,149,23,408,741,1519,11,623,309,124,141,166,790,523,261,79,47,44,58 }, &data, false, true, false, All);
+    //run<MyStratV1>({ 265,949,149,23,412,731,1504,11,619,314,124,145,166,790,523,259,91,47,44,58 }, &data, false, true, false, All);
+    //run<MyStratV1>({ 265,989,149,23,412,731,1504,11,619,314,124,145,166,790,523,259,91,47,44,58 }, &data, false, true, false, All);
+    //run<MyStratV1>({ 267,949,176,28,427,1088,1131,10,591,318,150,193,168,789,306,136,56,1,11,32 }, &data, true, true, true, All);
+    //run<MyStratV1>({ 265,944,149,23,449,775,1576,11,623,311,124,145,166,769,537,288,55,47,44,58 }, &data, false, true, false, All);
+    //run<MyStratV1>({ 265,945,150,23,450,760,1660,11,624,308,124,172,166,769,539,315,71,59,47,59 }, &data, false, true, false, All);
     
     //trainTest<MyStratV1>(1000, 360, &data, { 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, All);
     //walkForward<MyStratV1>(720, 360, &data, { 260, 960, 149, 23, 313, 731, 1382, 16, 568, 341, 125, 148, 165, 786, 524, 204, 169, 35, 38, 69 }, Ado);
