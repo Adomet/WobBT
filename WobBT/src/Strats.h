@@ -85,7 +85,7 @@ public:
         bear_takeprofit = p(13, 0) / 10000.0;
 
         stop_loss = p(14, 0) / 10000.0;
-        timeProfitRetioDropRate = p(15, 0) / 1000000.0;
+        timeProfitRetioDropRate = p(15, 0) / 100000.0;
 
         bull_tema_div_high = nz(p(4, 1), 1);
         bull_tema_div_low = nz(p(5, 1), 1);
