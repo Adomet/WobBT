@@ -187,6 +187,11 @@ BrokerState BinanceBroker::getState()
     return m_cachedState;
 }
 
+void BinanceBroker::setLastBuyPrice(double price)
+{
+    m_cachedState.lastBuyPrice = price;
+}
+
 void BinanceBroker::logLiveCandles(const BrokerState& state) const
 {
     std::ostringstream log;

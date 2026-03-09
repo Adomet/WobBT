@@ -27,6 +27,7 @@ public:
 
     void executeOrder(bool isBuy, double price) override;
     BrokerState getState() override;
+    void setLastBuyPrice(double price) override;
     void refreshState();
 
     // Runs live loop: fetches data, on each new candle runs strategy through Cerebro

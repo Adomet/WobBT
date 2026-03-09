@@ -10,6 +10,7 @@ public:
 	BrokerState getState() override;
 	void setStartCash(double startCash) override;
 	void setCommissions(double commissions) override;
+	void setLastBuyPrice(double price) override;
 	double getCommissions() const override { return m_commissions; }
 
 private:

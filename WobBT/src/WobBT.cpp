@@ -394,28 +394,44 @@ double runLive(std::vector<int> params)
     cfg.warmupCandles = 500;
     cfg.pollIntervalSec = 1;
 
+    double lastBuyPriceOverride = -1;
+    std::string lastBuyPriceStr = fromDotEnv("LAST_BUY_PRICE");
+    if (!lastBuyPriceStr.empty())
+    {
+        char* end = nullptr;
+        double v = std::strtod(lastBuyPriceStr.c_str(), &end);
+        if (end && *end == '\0' && v > 0)
+            lastBuyPriceOverride = v;
+    }
+
     BinanceBroker bb(cfg);
     T mystrat(bb.getOHLC(), params);
     Cerebro cerebro(&mystrat);
+    if (lastBuyPriceOverride > 0)
+        bb.setLastBuyPrice(lastBuyPriceOverride);
     bb.runLive(cerebro);
     Debug::Log(paramStr(params) + " ::: Live");
     mystrat.deleteElements();
     return 0;
 }
 
-int runWobBT(int argc, char** argv)
+int runLive(int argc, char** argv)
 {
     printHeader();
     runLive<MyStratV1>({ 266,944,149,21,466,763,1186,12,561,328,122,152,193,824,577,47,51,16,47,56 });
     return 0;
+}
 
+int runWobBT(int argc, char** argv)
+{
+    printHeader();
     //2020-09-01
     //2022-06-10
 
-    //OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2020-09-01", false);
+    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2026-01-01", false);
     //Timer timer("All");
 
-    //run<MyStratV1>({ 266,944,149,21,466,763,1186,12,561,328,122,152,193,824,577,47,51,16,47,56 }, &data, true, true, true, All);
+    run<MyStratV1>({ 266,944,149,21,466,763,1186,12,561,328,122,152,193,824,577,47,51,16,47,56 }, &data, false, true, true, All);
     
     
     //run<MyStratV1>({ 265,944,148,21,466,755,975,11,626,310,133,143,169,1147,593,14,10,12,40,51 }, &data, false, true, false, All);
@@ -432,5 +448,5 @@ int runWobBT(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-    return runWobBT(argc,argv);
+    return runLive(argc,argv);
 }

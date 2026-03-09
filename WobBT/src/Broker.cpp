@@ -43,3 +43,8 @@ void Broker::setCommissions(double commissions)
 {
 	m_commissions = commissions;
 }
+
+void Broker::setLastBuyPrice(double price)
+{
+	m_state.lastBuyPrice = price;
+}
