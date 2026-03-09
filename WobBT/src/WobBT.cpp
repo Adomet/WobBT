@@ -367,8 +367,24 @@ void printHeader()
     Debug::Log("");
 }
 
+static double parseLbpFromArgs(int argc, char** argv)
+{
+    for (int i = 1; i < argc - 1; i++)
+    {
+        if (std::string(argv[i]) == "--lbp")
+        {
+            char* end = nullptr;
+            double v = std::strtod(argv[i + 1], &end);
+            if (end && *end == '\0' && v > 0)
+                return v;
+            return -1;
+        }
+    }
+    return -1;
+}
+
 template <class T>
-double runLive(std::vector<int> params)
+double runLive(std::vector<int> params, double lastBuyPrice)
 {
     BinanceConfig cfg;
     const auto dotEnv = loadDotEnv(".env");
@@ -394,21 +410,11 @@ double runLive(std::vector<int> params)
     cfg.warmupCandles = 500;
     cfg.pollIntervalSec = 1;
 
-    double lastBuyPriceOverride = -1;
-    std::string lastBuyPriceStr = fromDotEnv("LAST_BUY_PRICE");
-    if (!lastBuyPriceStr.empty())
-    {
-        char* end = nullptr;
-        double v = std::strtod(lastBuyPriceStr.c_str(), &end);
-        if (end && *end == '\0' && v > 0)
-            lastBuyPriceOverride = v;
-    }
-
     BinanceBroker bb(cfg);
     T mystrat(bb.getOHLC(), params);
     Cerebro cerebro(&mystrat);
-    if (lastBuyPriceOverride > 0)
-        bb.setLastBuyPrice(lastBuyPriceOverride);
+    if (lastBuyPrice > 0)
+        bb.setLastBuyPrice(lastBuyPrice);
     bb.runLive(cerebro);
     Debug::Log(paramStr(params) + " ::: Live");
     mystrat.deleteElements();
@@ -418,7 +424,10 @@ double runLive(std::vector<int> params)
 int runLive(int argc, char** argv)
 {
     printHeader();
-    runLive<MyStratV1>({ 266,944,149,21,466,763,1186,12,561,328,122,152,193,824,577,47,51,16,47,56 });
+    double lbp = parseLbpFromArgs(argc, argv);
+    if (lbp > 0)
+        Debug::Log("last buy price: " + std::to_string(lbp));
+    runLive<MyStratV1>({ 266,944,149,21,466,763,1186,12,561,328,122,152,193,824,577,47,51,16,47,56 }, lbp);
     return 0;
 }
 
