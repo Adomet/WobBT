@@ -239,6 +239,7 @@ void BinanceBroker::executeOrder(bool isBuy, double price)
 
     std::string url = "https://api.binance.com/api/v3/order";
     std::string resp = httpPost(url, queryString);
+    Debug::Log(side + " response: " + (resp.empty() ? "(empty)" : resp));
 }
 
 void BinanceBroker::runLive(Cerebro& cerebro)
