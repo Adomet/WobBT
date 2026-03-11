@@ -123,7 +123,7 @@ static double computeScore(const CerebroResult& r, RetVal retval)
         res = std::sqrt(growth);
         break;
     case TradeCount:
-        res = tradeCount * tradeCount * tradeCount * wonCount * std::sqrt(growth) / (std::sqrt(avgDD * maxDD) + 1.0);
+        res = tradeCount * tradeCount * tradeCount * wonCount * std::sqrt(growth) / (100000000*std::sqrt(avgDD * maxDD) + 1.0);
         break;
         break;
     case Sharpe:
@@ -437,11 +437,14 @@ int runWobBT(int argc, char** argv)
     //2020-09-01
     //2022-06-10
 
-    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2026-01-01", false);
+    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2022-06-10", false);
     //Timer timer("All");
 
-    run<MyStratV1>({ 266,944,149,21,466,763,1186,12,561,328,122,152,193,824,577,47,51,16,47,56 }, &data, false, true, true, All);
-    
+    //run<MyStratV1>({ 266,944,149,21,466,763,1186,12,561,328,122,152,193,824,577,47,51,16,47,56 }, &data, false, true, false, TradeCount);
+    //run<MyStratV1>({ 267,944,184,22,466,767,1161,12,551,312,122,152,202,828,540,46,40,15,47,56 }, &data, false, true, false, TradeCount);
+    //run<MyStratV1>({ 277,945,195,24,464,946,1085,12,555,282,121,147,202,707,529,51,27,1,47,58 }, &data, false, true, false, TradeCount);
+    run<MyStratV1>({ 283,914,172,24,450,768,1189,11,566,282,123,164,203,771,533,58,40,12,47,56 }, &data, true, true, true, TradeCount);
+
     
     //run<MyStratV1>({ 265,944,148,21,466,755,975,11,626,310,133,143,169,1147,593,14,10,12,40,51 }, &data, false, true, false, All);
 
