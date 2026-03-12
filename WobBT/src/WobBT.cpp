@@ -114,7 +114,7 @@ static double computeScore(const CerebroResult& r, RetVal retval)
         res = (std::sqrt(growth)  * sharpe * wonCount) / ((avgDD * maxDD) + 1.0);
         break;
     case All:
-        res = pow(tradeCount * wonCount,3) * std::sqrt(growth * WinStreak * profitFactor * expectancy * sharpe * sqn)  / ((1000000000 * lostCount * avgDD * avgDD * LoseStreak * maxDD) + 1.0);
+        res = tradeCount * wonCount * std::sqrt(std::sqrt(growth * profitFactor * expectancy * sharpe * sqn)) / ((1000000 * avgDD * maxDD) + 1.0);
         break;
     case Return:
         res = growth / ((avgDD * maxDD) + 1.0);
@@ -427,7 +427,7 @@ int runLive(int argc, char** argv)
     double lbp = parseLbpFromArgs(argc, argv);
     if (lbp > 0)
         Debug::Log("last buy price: " + std::to_string(lbp));
-    runLive<MyStratV1>({ 266,944,149,21,466,763,1186,12,561,328,122,152,193,824,577,47,51,16,47,56 }, lbp);
+    runLive<MyStratV1>({ 266,944,155,21,466,749,1186,12,564,312,122,152,202,858,539,47,40,15,47,56 }, lbp);
     return 0;
 }
 
@@ -441,12 +441,14 @@ int runWobBT(int argc, char** argv)
     //Timer timer("All");
 
     //run<MyStratV1>({ 266,944,149,21,466,763,1186,12,561,328,122,152,193,824,577,47,51,16,47,56 }, &data, false, true, false, TradeCount);
-    //run<MyStratV1>({ 267,944,184,22,466,767,1161,12,551,312,122,152,202,828,540,46,40,15,47,56 }, &data, false, true, false, TradeCount);
-    //run<MyStratV1>({ 277,945,195,24,464,946,1085,12,555,282,121,147,202,707,529,51,27,1,47,58 }, &data, false, true, false, TradeCount);
-    run<MyStratV1>({ 283,914,172,24,450,768,1189,11,566,282,123,164,203,771,533,58,40,12,47,56 }, &data, true, true, true, TradeCount);
-
+    //run<MyStratV1>({ 266,944,151,21,466,755,1184,12,561,312,122,152,160,828,515,47,51,20,47,56 }, &data, false, true, false, TradeCount);
+    //run<MyStratV1>({ 266,946,155,21,466,786,1186,12,564,312,122,152,202,858,539,47,40,15,47,56 }, &data, false, true, false, TradeCount);
+    run<MyStratV1>({ 266,944,155,21,466,749,1186,12,564,312,122,152,202,858,539,47,40,15,47,56 }, &data, false, true, false, TradeCount);
     
-    //run<MyStratV1>({ 265,944,148,21,466,755,975,11,626,310,133,143,169,1147,593,14,10,12,40,51 }, &data, false, true, false, All);
+    //run<MyStratV1>({ 266,944,158,22,466,768,1186,12,564,312,122,152,202,858,539,46,40,15,47,56 }, &data, false, true, false, TradeCount);
+    //run<MyStratV1>({ 266,944,184,22,466,767,1161,12,551,312,122,152,202,828,540,46,40,15,47,56 }, &data, false, true, false, TradeCount);
+
+    //run<MyStratV1>({ 265,944,148,21,466,755,975,11,626,310,133,143,169,1147,593,14,10,12,40,51 }, &data, false, true, false, TradeCount);
 
     //trainTest<MyStratV1>(1000, 360, &data, { 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, All);
     //walkForward<MyStratV1>(720, 360, &data, { 260, 960, 149, 23, 313, 731, 1382, 16, 568, 341, 125, 148, 165, 786, 524, 204, 169, 35, 38, 69 }, Ado);
