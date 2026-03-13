@@ -123,7 +123,7 @@ static double computeScore(const CerebroResult& r, RetVal retval)
         res = std::sqrt(growth);
         break;
     case TradeCount:
-        res = tradeCount * tradeCount * tradeCount * wonCount * std::sqrt(growth) / (100000000*std::sqrt(avgDD * maxDD) + 1.0);
+        res = tradeCount * tradeCount * wonCount * wonCount * wonCount * std::sqrt(growth) / (100000000000*std::sqrt(avgDD * maxDD) + 1.0);
         break;
         break;
     case Sharpe:
@@ -437,19 +437,14 @@ int runWobBT(int argc, char** argv)
     //2020-09-01
     //2022-06-10
 
-    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2022-06-10", false);
+    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2020-09-01", false);
     //Timer timer("All");
 
-    //run<MyStratV1>({ 266,944,149,21,466,763,1186,12,561,328,122,152,193,824,577,47,51,16,47,56 }, &data, false, true, false, TradeCount);
-    //run<MyStratV1>({ 266,944,151,21,466,755,1184,12,561,312,122,152,160,828,515,47,51,20,47,56 }, &data, false, true, false, TradeCount);
-    //run<MyStratV1>({ 266,946,155,21,466,786,1186,12,564,312,122,152,202,858,539,47,40,15,47,56 }, &data, false, true, false, TradeCount);
-    run<MyStratV1>({ 266,944,155,21,466,749,1186,12,564,312,122,152,202,858,539,47,40,15,47,56 }, &data, false, true, false, TradeCount);
+    run<MyStratV1>({ 266,944,149,21,466,763,1186,12,561,328,122,152,193,824,577,47,51,16,47,56 }, &data, false, true, false, All);
+    run<MyStratV1>({ 266,944,151,21,466,755,1184,12,561,312,122,152,160,828,515,47,51,20,47,56 }, &data, false, true, false, All);
+    run<MyStratV1>({ 266,944,184,22,466,767,1161,12,551,312,122,152,202,828,540,46,40,15,47,56 }, &data, true, true, false, TradeCount);
+    run<MyStratV1>({ 266,944,155,21,466,749,1186,12,564,312,122,152,202,858,539,47,40,15,47,56 }, &data, false, true, false, All);
     
-    //run<MyStratV1>({ 266,944,158,22,466,768,1186,12,564,312,122,152,202,858,539,46,40,15,47,56 }, &data, false, true, false, TradeCount);
-    //run<MyStratV1>({ 266,944,184,22,466,767,1161,12,551,312,122,152,202,828,540,46,40,15,47,56 }, &data, false, true, false, TradeCount);
-
-    //run<MyStratV1>({ 265,944,148,21,466,755,975,11,626,310,133,143,169,1147,593,14,10,12,40,51 }, &data, false, true, false, TradeCount);
-
     //trainTest<MyStratV1>(1000, 360, &data, { 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, All);
     //walkForward<MyStratV1>(720, 360, &data, { 260, 960, 149, 23, 313, 731, 1382, 16, 568, 341, 125, 148, 165, 786, 524, 204, 169, 35, 38, 69 }, Ado);
     // 265,989,149,23,410,775,1525,11,623,314,124,145,166,834,523,263,98,44,44,58
