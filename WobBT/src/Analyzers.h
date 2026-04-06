@@ -433,3 +433,59 @@ public:
 public:
 	Strategy& m_strat;
 };
+
+
+class SortinoRatio : public Analyzer
+{
+public:
+	static constexpr const char* name = "SortinoRatio";
+	SortinoRatio(Strategy& strat) : m_strat(strat) { m_name = name; }
+	~SortinoRatio() = default;
+
+	double run()
+	{
+		const auto& trades = m_strat.m_trades;
+		size_t n = trades.size();
+		if (n < 2)
+		{
+			m_Result = 0;
+			return m_Result;
+		}
+
+		double sum = 0.0;
+		double downSumSq = 0.0;
+		const double mar = 0.0;
+		for (size_t i = 0; i < n; i++)
+		{
+			const double r = trades[i].second;
+			sum += r;
+			if (r < mar)
+			{
+				const double shortfall = r - mar;
+				downSumSq += shortfall * shortfall;
+			}
+		}
+
+		double mean = sum / static_cast<double>(n);
+		const double downDev = std::sqrt(downSumSq / static_cast<double>(n));
+
+		if (downDev <= 1e-12)
+		{
+			m_Result = 0;
+			return m_Result;
+		}
+		const double baseSortino = mean / downDev;
+		const size_t usedCandles = (m_strat.m_Data && m_strat.m_Data->close.size() > 1)
+			? (m_strat.m_Data->close.size() - 1)
+			: 0;
+		const int candlesPerDay = OHLC::candlesPerDay(m_strat.m_Data ? m_strat.m_Data->m_CandleType : OHLC::m15);
+		const double yearsCovered = (candlesPerDay > 0)
+			? (static_cast<double>(usedCandles) / (static_cast<double>(candlesPerDay) * 365.0))
+			: 0.0;
+
+		m_Result = baseSortino * yearsCovered;
+		return m_Result;
+	}
+public:
+	Strategy& m_strat;
+};

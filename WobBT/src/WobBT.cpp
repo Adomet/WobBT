@@ -12,12 +12,19 @@
 #include <unordered_map>
 #include "Cerebro.h"
 #include "Analyzers.h"
-#include "Strats.h"
+#include "Strats/MyStratV1.h"
+#include "Strats/GoldenCross.h"
+#include "Strats/RSIStrategy.h"
+#include "Strats/RelativeRangeStrategy.h"
+#include "Strats/MyStratV3.h"
+#include "Strats/MyStratV3.h"
+#include "Strats/LiveStratOld.h"
 #include "Binance.h"
+#include <Strats/MyStratV4.h>
 
 enum RetVal
 {
-    Ado, All, Return,Cash, TradeCount , Sharpe
+    Ado, All, Return,Cash, TradeCount , Sharpe, Sortino
 };
 
 std::string paramStr(std::vector<int>& params);
@@ -26,7 +33,7 @@ template <class T>
 double run(std::vector<int> params, OHLC* data, bool optimize, bool showAnalysis, bool showPlot, RetVal retval);
 
 template <class T>
-std::vector<int> optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range = 16, bool singleStep = false);
+std::vector<int> optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal retval, int scan_range = 8, bool singleStep = false);
 
 template <class T>
 std::vector<int> OptRunData(OHLC* data, std::vector<int> oldparams, int scan_range, bool singleStep, RetVal retval);
@@ -76,10 +83,10 @@ static std::unordered_map<std::string, std::string> loadDotEnv(const std::string
 
 static void addDefaultAnalyzers(Cerebro& cerebro, Strategy& strat)
 {
+    cerebro.addAnalyzer(new ReturnPNL(strat));
     cerebro.addAnalyzer(new TotalClosed(strat));
     cerebro.addAnalyzer(new TotalWon(strat));
     cerebro.addAnalyzer(new TotalLost(strat));
-    cerebro.addAnalyzer(new ReturnPNL(strat));
     cerebro.addAnalyzer(new WinStreaks(strat));
     cerebro.addAnalyzer(new LoseStreaks(strat));
     cerebro.addAnalyzer(new WinRate(strat));
@@ -90,6 +97,7 @@ static void addDefaultAnalyzers(Cerebro& cerebro, Strategy& strat)
     cerebro.addAnalyzer(new ProfitFactor(strat));
     cerebro.addAnalyzer(new SQN(strat));
     cerebro.addAnalyzer(new SharpeRatio(strat));
+    cerebro.addAnalyzer(new SortinoRatio(strat));
 }
 
 static double computeScore(const CerebroResult& r, RetVal retval)
@@ -104,6 +112,7 @@ static double computeScore(const CerebroResult& r, RetVal retval)
     double lostCount = r.getResult<TotalLost>();
     double winRate = r.getResult<WinRate>();
     double sharpe = r.getResult<SharpeRatio>();
+    double sortino = r.getResult<SortinoRatio>();
     double profitFactor = r.getResult<ProfitFactor>();
     double WinStreak = r.getResult<WinStreaks>();
     double LoseStreak = r.getResult<LoseStreaks>();
@@ -111,23 +120,26 @@ static double computeScore(const CerebroResult& r, RetVal retval)
     switch (retval)
     {
     case Ado:
-        res = (std::sqrt(growth)  * sharpe * wonCount) / ((avgDD * maxDD) + 1.0);
+        res = tradeCount * tradeCount * wonCount * wonCount * std::sqrt(growth) / (100000000000 * std::sqrt(avgDD * maxDD) + 1.0);
         break;
     case All:
-        res = tradeCount * wonCount * std::sqrt(std::sqrt(growth * profitFactor * expectancy * sharpe * sqn)) / ((1000000 * avgDD * maxDD) + 1.0);
+        res =  tradeCount * wonCount * std::sqrt(growth * profitFactor * expectancy * sortino * sqn) / ((1000 * avgDD * maxDD) + 1.0);
         break;
     case Return:
-        res = growth / ((avgDD * maxDD) + 1.0);
+        res = tradeCount * wonCount * wonCount * std::sqrt(expectancy) / ((avgDD * maxDD) + 1.0);
         break;
     case Cash:
-        res = std::sqrt(growth);
+        res = growth;
         break;
     case TradeCount:
         res = tradeCount * tradeCount * wonCount * wonCount * wonCount * std::sqrt(growth) / (100000000000*std::sqrt(avgDD * maxDD) + 1.0);
         break;
-        break;
     case Sharpe:
-        res = sharpe / ((avgDD * maxDD) + 1.0);
+        res = sharpe * sqn * expectancy * profitFactor / ((1000000 * avgDD * maxDD) + 1.0);
+        break;
+    case Sortino:
+        res = sortino;// *sqn* expectancy* profitFactor / ((1000000 * avgDD * maxDD) + 1.0);
+        break;
     default:
         break;
     }
@@ -272,7 +284,7 @@ std::vector<int>  optimizeStrat(std::vector<int> oldparams, OHLC* data, RetVal r
     std::vector<int> newparams = OptRunData<T>(data, oldparams, scan_range, singleStep, retval);
     if (newparams == oldparams)
     {
-        if (scan_range > 30)
+        if (scan_range > 60)
         {
             if (!singleStep)
                 return optimizeStrat<T>(newparams, data, retval, scan_range, true);
@@ -427,30 +439,45 @@ int runLive(int argc, char** argv)
     double lbp = parseLbpFromArgs(argc, argv);
     if (lbp > 0)
         Debug::Log("last buy price: " + std::to_string(lbp));
-    runLive<MyStratV1>({ 266,944,155,21,466,749,1186,12,564,312,122,152,202,858,539,47,40,15,47,56 }, lbp);
+    runLive<MyStratV1>({ 276,942,164,23,460,904,1184,9,619,314,143,172,198,1009,592,35,26,89,43,69 }, lbp);
     return 0;
 }
 
 int runWobBT(int argc, char** argv)
 {
     printHeader();
-    //2020-09-01
-    //2022-06-10
+    //2020-09-01 //266,944,155,21,466,749,1186,12,564,312,122,152,202,858,539,47,40,15,47,56
+    //2022-06-02
 
-    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2020-09-01", false);
-    //Timer timer("All");
+    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2022-06-02", false);
 
-    run<MyStratV1>({ 266,944,149,21,466,763,1186,12,561,328,122,152,193,824,577,47,51,16,47,56 }, &data, false, true, false, All);
-    run<MyStratV1>({ 266,944,151,21,466,755,1184,12,561,312,122,152,160,828,515,47,51,20,47,56 }, &data, false, true, false, All);
-    run<MyStratV1>({ 266,944,184,22,466,767,1161,12,551,312,122,152,202,828,540,46,40,15,47,56 }, &data, true, true, false, TradeCount);
-    run<MyStratV1>({ 266,944,155,21,466,749,1186,12,564,312,122,152,202,858,539,47,40,15,47,56 }, &data, false, true, false, All);
+    run<MyStratV1>({ 276,942,164,23,460,904,1184,9,619,314,143,172,198,1009,592,35,26,89,43,69 }, &data, false, true, true, All);
+
     
+
+    //run<GoldenCross>({ 60,205,19,12 }, &data, true, true, true, Sharpe);
+    //run<RSIStrategy>({ 29,22,53,8,14 }, &data, true, true, true, Sharpe);
+    //run<RelativeRangeStrategy>({ 55,21,38,5,31,13 }, &data, true, true, true, Sharpe);
+    //run<LiveStratOld>({ 3,238,3,848,161,74,186,402,1626,25,517,350,119,165,340,1093,585,261,81}, &data, true, true, true, Sharpe);
+
+
     //trainTest<MyStratV1>(1000, 360, &data, { 265,985,152,23,472,731,1539,19,573,312,123,142,171,790,524,242,123,40,36,59 }, All);
     //walkForward<MyStratV1>(720, 360, &data, { 260, 960, 149, 23, 313, 731, 1382, 16, 568, 341, 125, 148, 165, 786, 524, 204, 169, 35, 38, 69 }, Ado);
     // 265,989,149,23,410,775,1525,11,623,314,124,145,166,834,523,263,98,44,44,58
     // 
 
 
+
+    //run<MyStratV3>({ 6,269,17,63,44,145,223,78,9,60,32,131,147,483,176,44 }, &data, false, true, false, Ado);
+    //run<MyStratV3>({ 4,261,6,63,41,204,166,27,16,45,31,131,33,523,256,24 }, &data, true, true, true, All);
+
+    //run<MyStratV3>({ 8,269,17,63,44,138,149,78,9,60,32,131,137,483,176,44 }, &data, false, true, false, Ado);
+    //run<MyStratV3>({ 4,288,17,98,44,147,1,74,14,62,35,133,146,498,146,48 }, &data, true, true, true, Ado);
+
+
+    //run<MyStratV4>({ 22,63,36,71,65,65,276,58 }, &data, true, true, true,Cash);
+    //run<MyStratV4>({ 21,67,34,41,57,65,238,20 }, &data, true, true, true, Ado);
+    //run<MyStratV4>({ 17,68,34,42,57,65,275,51 }, &data, true, true, true, Ado);
     
     return 0;
 }

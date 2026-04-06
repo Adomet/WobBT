@@ -4,9 +4,11 @@
 #include <iostream>
 #include <deque>
 #include <cmath>
+#include <algorithm>
+#include <utility>
 
 //Indicator List: SMA,EMA,DEMA,TEMA,RSI,ATR,ADX,AverageRage,NormalizedRange,
-//                AverageDiff,ATD,RelativeRange,EWO,TD9,CrossOver,SuperTrend
+//                AverageDiff,ATD,RelativeRange,EWO,TD9,CrossOver,SuperTrend,Greed
 
 class Indicator
 {
@@ -937,4 +939,55 @@ public:
 	double m_diff;
 	std::vector<double> top;
 	std::vector<double> bot;
+};
+
+// İşlem geçmişine göre bar-bazlı güncellenir; strateji her mumda update() çağırmalıdır.
+class Greed : public Indicator
+{
+public:
+	Greed(OHLC* ohlc, double gMin = 0.5, double gMax = 1.5, double slowUp = 0.05, double fastDown = 0.07, double pullToOne = 0.0005)
+		: Indicator(ohlc), m_gMin(gMin), m_gMax(gMax), m_slowUp(slowUp), m_fastDown(fastDown), m_pullToOne(pullToOne)
+	{
+		init();
+		m_name = "Greed";
+	}
+
+	void init() override
+	{
+		line.assign(m_ohlc->close.size(), 1.0);
+		init_period = 1;
+		isSubplot = true;
+	}
+
+	void update(int candleIndex, const std::vector<std::pair<int, double>>& trades)
+	{
+		if (candleIndex < 1) return;
+
+		double g = line[candleIndex - 1];
+
+		bool closedPrev = false;
+		bool lastWin = false;
+		bool lastLoss = false;
+		if (!trades.empty())
+		{
+			lastWin = trades.back().second > 0.0;
+			lastLoss = trades.back().second <= 0.0;
+			closedPrev = (trades.back().first == candleIndex - 1);
+		}
+
+		if (closedPrev && lastLoss)
+			g = std::max(m_gMin, g - m_fastDown);
+		else if (closedPrev && lastWin)
+			g = std::min(m_gMax, g + m_slowUp);
+
+		g = g + ((1.0 - g) * m_pullToOne);
+		line[candleIndex] = g;
+	}
+
+private:
+	double m_gMin;
+	double m_gMax;
+	double m_slowUp;
+	double m_fastDown;
+	double m_pullToOne;
 };

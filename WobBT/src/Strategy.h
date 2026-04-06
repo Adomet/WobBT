@@ -29,10 +29,49 @@ public:
 	double getCash() const { return m_broker->getState().cash; }
 	double getCoin() const { return m_broker->getState().coin; }
 	double getBuyPrice() const { return m_broker->getState().lastBuyPrice; }
+	int getPosCandleCount() const { return m_posCandleCount; }
+	bool inPosition() const { return getCoin() > 0; }
 
 	double getEQ(double close)
 	{
 		return getCash() + (getCoin() * close);
+	}
+
+	int param(int idx, int fallback) const
+	{
+		int v = (idx < 0 || idx >= (int)m_params.size()) ? fallback : m_params[idx];
+		return nz(v, fallback);
+	}
+
+	static int nz(int value, int fallback = 1)
+	{
+		return value == 0 ? fallback : value;
+	}
+
+	void deleteElements()
+	{
+		for (auto* var : m_Inds)
+			delete var;
+		m_Inds.clear();
+
+		for (auto* var : m_Analyzers)
+			delete var;
+		m_Analyzers.clear();
+	}
+
+protected:
+	template<typename T, typename... Args>
+	T* addIndicator(Args&&... args)
+	{
+		T* ind = new T(std::forward<Args>(args)...);
+		m_Inds.push_back(ind);
+		return ind;
+	}
+
+public:
+	void Plot(bool plotIndicators = true)
+	{
+		Plot(&m_equityCurve, plotIndicators);
 	}
 
 	void Plot(std::vector<double>* equityCurve, bool plotIndicators = true)
@@ -275,17 +314,6 @@ public:
 		Debug::Log("------------------------------------------------------------------------------------------");
 	}
 
-	void deleteElements()
-	{
-		for (auto* var : m_Inds)
-			delete var;
-		m_Inds.clear();
-
-		for (auto* var : m_Analyzers)
-			delete var;
-		m_Analyzers.clear();
-	}
-
 	double end(double close)
 	{ 
 		return getEQ(close);
@@ -295,6 +323,7 @@ public:
 	{
 		if (m_isOrdered)
 			return;
+
 		if (m_warmupMode)
 			return;
 
@@ -304,20 +333,18 @@ public:
 
 		if (isbuy)
 		{
-			if (buyedPrice <= 0)
-			{
-				if (getCash() <= 0)
-					return;
+			if (getCash() < 15)
+				return;
 
-				m_isOrdered = true;
-				m_buySignals.push_back({ candleIndex, close });
-				m_broker->executeOrder(true, close);
-			}
+			m_isOrdered = true;
+			m_buySignals.push_back({ candleIndex, close });
+			m_broker->executeOrder(true, close);
+			m_posCandleCount = 1;
 		}
 		else
 		{
 			double coin = getCoin();
-			if (coin > 0)
+			if (coin > 0.1)
 			{
 				double entryPrice = buyedPrice > 0 ? buyedPrice : close;
 
@@ -356,12 +383,32 @@ public:
 
 	double run()
 	{
+		m_init_all_ind_periods = 0;
+		for (auto* ind : m_Inds)
+		{
+			if (ind->init_period > m_init_all_ind_periods)
+				m_init_all_ind_periods = ind->init_period;
+		}
+
 		for (size_t i = 1; i < m_Data->close.size(); i++)
 		{
 			m_isOrdered = false;
+			if (i <= (size_t)m_init_all_ind_periods)
+			{
+				if (getCoin() > 0)
+					m_posCandleCount++;
+				else
+					m_posCandleCount = 0;
+				m_equityCurve.push_back(getEQ(m_Data->close[i]));
+				m_cashCurve.push_back(getCash());
+				continue;
+			}
 			next(i);
-			double eq = getEQ(m_Data->close[i]);
-			m_equityCurve.push_back(eq);
+			if (getCoin() > 0)
+				m_posCandleCount++;
+			else
+				m_posCandleCount = 0;
+			m_equityCurve.push_back(getEQ(m_Data->close[i]));
 			m_cashCurve.push_back(getCash());
 		}
 
@@ -390,6 +437,7 @@ public:
 	bool     m_warmupMode = false;
 public:
 	int    m_init_all_ind_periods = 0;
+	int    m_posCandleCount = 0;
 	int    m_tradeCount = 0;
 	int    m_winTradeCount = 0;
 	int    m_winStreak = 0;

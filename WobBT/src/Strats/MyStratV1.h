@@ -1,5 +1,4 @@
 #pragma once
-#include <algorithm>
 #include "Strategy.h"
 #include "Indicator.h"
 #include "Debug.h"
@@ -19,12 +18,11 @@ public:
     Indicator* bear_tema = nullptr;
     Indicator* ar = nullptr;
     Indicator* ewo = nullptr;
+    //Greed* greedInd = nullptr;
 
     bool isbull = false;
     bool isbuyready = false;
-    int posCandleCount = 0;
 
-    // Cached params (aligned to MyStratV5.py)
     double bull_ewo_offset = 0.0;
     double bull_rsi_high = 0.0;
     double bull_rsi_low = 0.0;
@@ -44,79 +42,50 @@ public:
     int bear_tema_div_high = 1;
     int bear_tema_div_low = 1;
 
-    int p(int idx, int fallback) const
-    {
-        if (idx < 0 || idx >= (int)m_params.size())
-            return fallback;
-        return m_params[idx];
-    }
-
-    static int nz(int value, int fallback = 1)
-    {
-        return value == 0 ? fallback : value;
-    }
-
 public:
     void init()
     {
-        const double stMulti = std::max(1.0, p(0, 100) / 100.0);
-        const int bullTemaPeriod = std::max(1, p(3, 1));
-        const int bearRsiPeriod = std::max(1, p(7, 1));
-        const int bearTemaPeriod = std::max(1, p(10, 1));
-        const int ewoFastPeriod = std::max(1, p(18, 5));
-        const int ewoSlowPeriod = std::max(1, p(19, 35));
+        const double stMulti = param(0, 100) / 100.0;
+        const int bullTemaPeriod = param(3, 1);
+        const int bearRsiPeriod = param(7, 1);
+        const int bearTemaPeriod = param(10, 1);
+        const int ewoFastPeriod = param(18, 5);
+        const int ewoSlowPeriod = param(19, 35);
 
-        strend = new SuperTrend(m_Data, 3, stMulti);
-        bull_rsi = new RSI(m_Data, 3);
-        bull_tema = new TEMA(m_Data, bullTemaPeriod);
-        bear_rsi = new RSI(m_Data, bearRsiPeriod);
-        bear_tema = new TEMA(m_Data, bearTemaPeriod);
-        ar = new AverageRage(m_Data, 130);
-        ewo = new EWO(m_Data, ewoFastPeriod, ewoSlowPeriod);
+        strend = addIndicator<SuperTrend>(m_Data, 3, stMulti);
+        bull_rsi = addIndicator<RSI>(m_Data, 3);
+        bull_tema = addIndicator<TEMA>(m_Data, bullTemaPeriod);
+        bear_rsi = addIndicator<RSI>(m_Data, bearRsiPeriod);
+        bear_tema = addIndicator<TEMA>(m_Data, bearTemaPeriod);
+        ar = addIndicator<AverageRage>(m_Data, 130);
+        ewo = addIndicator<EWO>(m_Data, ewoFastPeriod, ewoSlowPeriod);
+        //greedInd = addIndicator<Greed>(m_Data);
 
-        bull_ewo_offset = p(16, 0) / 1000.0;
-        bull_rsi_high = p(1, 0) / 10.0;
-        bull_rsi_low = p(2, 0) / 10.0;
-        bull_takeprofit = p(6, 0) / 10000.0;
+        bull_ewo_offset = param(16, 0) / 1000.0;
+        bull_rsi_high = param(1, 0) / 10.0;
+        bull_rsi_low = param(2, 0) / 10.0;
+        bull_takeprofit = param(6, 0) / 10000.0;
 
-        bear_ewo_offset = p(17, 0) / 1000.0;
-        bear_rsi_high = p(8, 0) / 10.0;
-        bear_rsi_low = p(9, 0) / 10.0;
-        bear_takeprofit = p(13, 0) / 10000.0;
+        bear_ewo_offset = param(17, 0) / 1000.0;
+        bear_rsi_high = param(8, 0) / 10.0;
+        bear_rsi_low = param(9, 0) / 10.0;
+        bear_takeprofit = param(13, 0) / 10000.0;
 
-        stop_loss = p(14, 0) / 10000.0;
-        timeProfitRetioDropRate = p(15, 0) / 100000.0;
+        stop_loss = param(14, 0) / 10000.0;
+        timeProfitRetioDropRate = param(15, 0) / 100000.0;
 
-        bull_tema_div_high = nz(p(4, 1), 1);
-        bull_tema_div_low = nz(p(5, 1), 1);
-        bear_tema_div_high = nz(p(11, 1), 1);
-        bear_tema_div_low = nz(p(12, 1), 1);
-
-        m_Inds.push_back(strend);
-        m_Inds.push_back(bull_rsi);
-        m_Inds.push_back(bull_tema);
-        m_Inds.push_back(bear_rsi);
-        m_Inds.push_back(bear_tema);
-        m_Inds.push_back(ar);
-        m_Inds.push_back(ewo);
-
-        // Get most warmup period of indicators
-        for (auto* var : m_Inds)
-        {
-            auto tmp = var->init_period;
-            if (m_init_all_ind_periods < tmp)
-                m_init_all_ind_periods = tmp;
-        }
+        bull_tema_div_high = param(4, 1);
+        bull_tema_div_low = param(5, 1);
+        bear_tema_div_high = param(11, 1);
+        bear_tema_div_low = param(12, 1);
     }
     void next(int candleIndex)
     {
-        // Check if all indicators are initialized.
-        if (m_init_all_ind_periods > candleIndex)
-            return;
 
+        //greedInd->update(candleIndex, m_trades);
+        //double greed = greedInd->line[candleIndex];
 
         const double close = m_Data->close[candleIndex];
-        const bool inPos = (getCoin() > 0);
 
         const double arLine = ar->line[candleIndex];
         const double ewoLine = ewo->line[candleIndex];
@@ -133,7 +102,7 @@ public:
         const double bear_diff_tema_low = bearTema - ((bearTema / bear_tema_div_low) * 10.0);
 
         const double buyPrice = getBuyPrice();
-        const bool isStop = inPos && (close <= buyPrice - (buyPrice * stop_loss * arLine));
+        const bool isStop = inPosition() && (close <= buyPrice - (buyPrice * stop_loss * arLine));
         isbull = (strd < close);
 
         if (isbull)
@@ -142,7 +111,7 @@ public:
             const bool bull_rsiselltrigger = bullRsi >= bull_rsi_high;
             const bool bull_avgdiffselltrigger = close >= bull_diff_tema_heigh;
             const bool bull_avgdiffbuytrigger = close <= bull_diff_tema_low;
-            const bool bull_isTakeProfit = inPos && (close >= buyPrice + (buyPrice * bull_takeprofit));
+            const bool bull_isTakeProfit = inPosition() && (close >= buyPrice + (buyPrice * bull_takeprofit));
             const bool bull_ewo_trigger = ewoLine <= -bull_ewo_offset;
 
             if (bull_avgdiffbuytrigger && (bull_rsibuytrigger || bull_ewo_trigger))
@@ -160,7 +129,7 @@ public:
             const bool bear_rsiselltrigger = bearRsi >= bear_rsi_high;
             const bool bear_avgdiffselltrigger = close >= bear_diff_tema_heigh;
             const bool bear_avgdiffbuytrigger = close <= bear_diff_tema_low;
-            const bool bear_isTakeProfit = inPos && (close >= buyPrice + (buyPrice * bear_takeprofit * arLine));
+            const bool bear_isTakeProfit = inPosition() && (close >= buyPrice + (buyPrice * bear_takeprofit * arLine));
             const bool bear_ewo_trigger = ewoLine <= -bear_ewo_offset;
 
             if (bear_avgdiffbuytrigger && bear_rsibuytrigger && bear_ewo_trigger)
@@ -179,13 +148,8 @@ public:
             Orderer(candleIndex, true, "CANDLE_TRIG BUY");
         }
 
-        if (inPos)
-            posCandleCount += 1;
-        else
-            posCandleCount = 0;
-
-        const bool TimeProfitRatioSTP = inPos && !isbull && ((close - buyPrice) / buyPrice >= (bull_takeprofit - (timeProfitRetioDropRate * posCandleCount)));
-        const bool hardSTP = inPos && (close <= buyPrice - (buyPrice * hardSTPDefault));
+        const bool TimeProfitRatioSTP = inPosition() && !isbull && ((close - buyPrice) / buyPrice >= (bull_takeprofit - (timeProfitRetioDropRate * getPosCandleCount())));
+        const bool hardSTP = inPosition() && (close <= buyPrice - (buyPrice * hardSTPDefault));
 
         if (TimeProfitRatioSTP)
             Orderer(candleIndex, false, "Time_Profit SELL");
@@ -193,10 +157,4 @@ public:
         if (hardSTP)
             Orderer(candleIndex, false, "HARD_STP SELL");
     }
-
-    void Plot(bool plotIndicators = true)
-    {
-        this->Strategy::Plot(&m_equityCurve, plotIndicators);
-    }
-
 };

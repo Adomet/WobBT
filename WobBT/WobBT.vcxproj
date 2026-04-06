@@ -79,7 +79,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>WL_PLATFORM_WINDOWS;WL_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)WobBT\Dependencies;$(SolutionDir)WobBT\Dependencies\python\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)WobBT\Dependencies;$(SolutionDir)WobBT\Dependencies\python\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -97,7 +97,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>WL_PLATFORM_WINDOWS;WL_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)WobBT\Dependencies;$(SolutionDir)WobBT\Dependencies\python\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)WobBT\Dependencies;$(SolutionDir)WobBT\Dependencies\python\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -121,7 +121,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>WL_PLATFORM_WINDOWS;WL_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)WobBT\Dependencies;$(SolutionDir)WobBT\Dependencies\python\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)WobBT\Dependencies;$(SolutionDir)WobBT\Dependencies\python\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>None</DebugInformationFormat>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -151,7 +151,15 @@
     <ClInclude Include="src\Indicator.h" />
     <ClInclude Include="src\OHLC.h" />
     <ClInclude Include="src\Strategy.h" />
-    <ClInclude Include="src\Strats.h" />
+    <ClInclude Include="src\Strats\MyStratV1.h" />
+    <ClInclude Include="src\Strats\GoldenCross.h" />
+    <ClInclude Include="src\Strats\MyStratV2.h" />
+    <ClInclude Include="src\Strats\MyStratV3.h" />
+    <ClInclude Include="src\Strats\MyStratV4.h" />
+    <ClInclude Include="src\Strats\RelativeRangeStrategy.h" />
+    <ClInclude Include="src\Strats\RSIStrategy.h" />
+    <ClInclude Include="src\Strats\BinClucMad.h" />
+    <ClInclude Include="src\Strats\LiveStratOld.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Binance.cpp" />
