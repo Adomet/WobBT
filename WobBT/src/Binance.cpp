@@ -199,7 +199,8 @@ void BinanceBroker::logLiveCandles(const BrokerState& state) const
     log << formatCandleTime(m_lastProcessedOpenTime) << " - " << m_config.symbol
         << " | Coin " << state.coin
         << " | Cash " << state.cash
-        << " | C: " << m_lastProcessedClose;
+        << " | C: " << m_lastProcessedClose
+        << " | LBP: " << state.lastBuyPrice;
     Debug::Log(log.str());
 }
 

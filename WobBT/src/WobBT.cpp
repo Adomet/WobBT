@@ -449,7 +449,7 @@ int runWobBT(int argc, char** argv)
     //2020-09-01 //266,944,155,21,466,749,1186,12,564,312,122,152,202,858,539,47,40,15,47,56
     //2022-06-02
 
-    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2022-06-02", false);
+    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2026-01-01", false);
 
     run<MyStratV1>({ 276,942,164,23,460,904,1184,9,619,314,143,172,198,1009,592,35,26,89,43,69 }, &data, false, true, true, All);
 

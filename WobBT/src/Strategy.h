@@ -30,7 +30,7 @@ public:
 	double getCoin() const { return m_broker->getState().coin; }
 	double getBuyPrice() const { return m_broker->getState().lastBuyPrice; }
 	int getPosCandleCount() const { return m_posCandleCount; }
-	bool inPosition() const { return getCoin() > 0; }
+	bool inPosition() const { return getCoin() > 0.1; }
 
 	double getEQ(double close)
 	{
