@@ -164,7 +164,7 @@ bool BinanceBroker::fetchLatestKlines()
 void BinanceBroker::refreshState()
 {
     fetchWalletBalances(m_cachedState.coin, m_cachedState.cash);
-    if (m_cachedState.coin > 0.0)
+    if (m_cachedState.coin > 0.1)
     {
         // If wallet already holds coin at startup, initialize position anchor price.
         if (m_cachedState.lastBuyPrice <= 0.0)
