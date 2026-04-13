@@ -120,13 +120,13 @@ static double computeScore(const CerebroResult& r, RetVal retval)
     switch (retval)
     {
     case Ado:
-        res = tradeCount * tradeCount * wonCount * wonCount * std::sqrt(growth) / (100000000000 * std::sqrt(avgDD * maxDD) + 1.0);
+        res = wonCount * wonCount *  std::sqrt(growth) / (1000000 * std::sqrt(avgDD * maxDD) + 1.0);
         break;
     case All:
-        res =  tradeCount * wonCount * std::sqrt(growth * profitFactor * expectancy * sortino * sqn) / ((1000 * avgDD * maxDD) + 1.0);
+        res = tradeCount * wonCount * growth * profitFactor * expectancy * sortino * sqn / ((100000000 * avgDD * maxDD) + 1.0);
         break;
     case Return:
-        res = tradeCount * wonCount * wonCount * std::sqrt(expectancy) / ((avgDD * maxDD) + 1.0);
+        res = tradeCount * wonCount * wonCount * std::sqrt(expectancy) / (std::sqrt(avgDD * maxDD) + 1.0);
         break;
     case Cash:
         res = growth;
@@ -246,7 +246,7 @@ double run(std::vector<int> params, OHLC* data, bool optimize, bool showAnalysis
     {
         try
         {
-            mystrat.Plot(false);
+            mystrat.Plot(true);
         }
         catch (const std::exception& e)
         {
@@ -439,7 +439,7 @@ int runLive(int argc, char** argv)
     double lbp = parseLbpFromArgs(argc, argv);
     if (lbp > 0)
         Debug::Log("last buy price: " + std::to_string(lbp));
-    runLive<MyStratV1>({ 276,942,164,23,460,904,1184,9,619,314,143,172,198,1009,592,35,26,89,43,69 }, lbp);
+    runLive<MyStratV4>({ 29,43,59,52,39,51,159,216,119,240,90,81,27 }, lbp);
     return 0;
 }
 
@@ -447,17 +447,16 @@ int runWobBT(int argc, char** argv)
 {
     printHeader();
     //2020-09-01 //266,944,155,21,466,749,1186,12,564,312,122,152,202,858,539,47,40,15,47,56
-    //2022-06-02
 
-    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2026-01-01", false);
+    OHLC data = OHLC::getData("AVAX", "USDT", OHLC::CANDLE_TYPE::m15, "2020-09-01", false);
 
-    run<MyStratV1>({ 276,942,164,23,460,904,1184,9,619,314,143,172,198,1009,592,35,26,89,43,69 }, &data, false, true, true, All);
+    //run<MyStratV1>({ 276,942,164,23,460,904,1184,9,619,314,143,172,198,1009,592,35,26,89,43,69 }, &data, true, true, true, Ado);
 
     
 
-    //run<GoldenCross>({ 60,205,19,12 }, &data, true, true, true, Sharpe);
-    //run<RSIStrategy>({ 29,22,53,8,14 }, &data, true, true, true, Sharpe);
-    //run<RelativeRangeStrategy>({ 55,21,38,5,31,13 }, &data, true, true, true, Sharpe);
+    //run<GoldenCross>({ 60,205,19,12 }, &data, false, true, true, Sharpe);
+    //run<RSIStrategy>({ 29,22,53,8,14 }, &data, true, true, true, Cash);
+    //run<RelativeRangeStrategy>({ 55,21,38,5,31,13 }, &data, false, true, true, Sharpe);
     //run<LiveStratOld>({ 3,238,3,848,161,74,186,402,1626,25,517,350,119,165,340,1093,585,261,81}, &data, true, true, true, Sharpe);
 
 
@@ -467,18 +466,39 @@ int runWobBT(int argc, char** argv)
     // 
 
 
+    //run<MyStratV3>({ 6,256,10,84,41,142,249,65,19,57,39,111,56,564,226,45 }, &data, false, true, true, Ado);
+    //run<MyStratV3>({ 6,260,10,91,41,146,392,74,19,57,42,110,56,559,142,44 }, &data, false, true, true, Ado);
+    //run<MyStratV3>({ 6,256,10,84,41,142,249,65,19,57,39,111,56,564,226,45 }, &data, true, true, true, Ado);
 
-    //run<MyStratV3>({ 6,269,17,63,44,145,223,78,9,60,32,131,147,483,176,44 }, &data, false, true, false, Ado);
-    //run<MyStratV3>({ 4,261,6,63,41,204,166,27,16,45,31,131,33,523,256,24 }, &data, true, true, true, All);
-
-    //run<MyStratV3>({ 8,269,17,63,44,138,149,78,9,60,32,131,137,483,176,44 }, &data, false, true, false, Ado);
-    //run<MyStratV3>({ 4,288,17,98,44,147,1,74,14,62,35,133,146,498,146,48 }, &data, true, true, true, Ado);
-
-
-    //run<MyStratV4>({ 22,63,36,71,65,65,276,58 }, &data, true, true, true,Cash);
-    //run<MyStratV4>({ 21,67,34,41,57,65,238,20 }, &data, true, true, true, Ado);
-    //run<MyStratV4>({ 17,68,34,42,57,65,275,51 }, &data, true, true, true, Ado);
+    //6,254,10,99,41,146,1,74,19,57,41,111,56,564,142,46
+    //6,256,10,84,41,142,182,65,19,57,39,111,56,564,226,45
+    //6,256,10,84,41,142,249,65,19,57,39,111,56,564,226,45
+    // 6,260,10,91,41,146,392,74,19,57,42,110,1,559,142,44
     
+    // 16,61,43,57,137,105,65,49
+    // 17,60,43,57,153,105,65,66
+
+
+    //run<MyStratV4>({ 23,45,63,29,52,39,52,142,216,143,339 }, &data, true, true, true, All);
+
+    //run<MyStratV1>({ 276,942,164,23,460,904,1184,9,619,314,143,172,198,1009,592,35,26,89,43,69 }, &data, false, true, true, Ado);
+    //run<MyStratV1>({ 266,944,155,21,466,749,1186,12,564,312,122,152,202,858,539,47,40,15,47,56 }, &data, true, true, true, All);
+    //run<MyStratV4>({ 29,43,59,52,39,51,159,216,119,240,90,81,27}, &data, false, true, true, All);
+
+
+
+
+
+
+    //run<MyStratV4>({ 15,52,49,56,143,105,129,127 }, &data, true, true, true, All);
+    //run<MyStratV4>({ 16,52,49,56,143,105,145,205 }, &data, false, true, true, Cash);
+
+    //run<MyStratV4>({ 16,52,49,56,143,105,145,205 }, &data, true, true, true, All);
+
+    //run<MyStratV4>({ 16,61,43,57,143,105,65,66 }, &data, false, true, false, All);
+    //run<MyStratV4>({ 17,60,43,57,153,105,65,66 }, &data, false, true, false, All);
+    //run<MyStratV4>({ 16,61,43,57,143,105,65,101 }, &data, false, true, false, All);
+
     return 0;
 }
 

@@ -945,7 +945,7 @@ public:
 class Greed : public Indicator
 {
 public:
-	Greed(OHLC* ohlc, double gMin = 0.5, double gMax = 1.5, double slowUp = 0.05, double fastDown = 0.07, double pullToOne = 0.0005)
+	Greed(OHLC* ohlc, double gMin = 0.5, double gMax = 1.5, double slowUp = 0.015, double fastDown = 0.005, double pullToOne = 0.002)
 		: Indicator(ohlc), m_gMin(gMin), m_gMax(gMax), m_slowUp(slowUp), m_fastDown(fastDown), m_pullToOne(pullToOne)
 	{
 		init();
